@@ -22,6 +22,7 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@solana/web3.js": "^1.98.4",
     "bcrypt": "^5.1.1",
     "bip32": "^4.0.0",
     "bip39": "^3.1.0",

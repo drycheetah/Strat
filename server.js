@@ -18,6 +18,7 @@ const walletRoutes = require('./routes/wallet.routes');
 const blockchainRoutes = require('./routes/blockchain.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const contractRoutes = require('./routes/contract.routes');
+const bridgeRoutes = require('./routes/bridge.routes');
 
 class ProductionServer {
   constructor() {
@@ -39,10 +40,16 @@ class ProductionServer {
   async initialize() {
     try {
       console.log('🔄 Connecting to MongoDB...');
+      console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'Not set');
       logger.info('Connecting to database...');
 
-      // Connect to database
-      await connectDB();
+      // Connect to database with timeout
+      const dbPromise = connectDB();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('MongoDB connection timeout after 30s')), 30000)
+      );
+
+      await Promise.race([dbPromise, timeoutPromise]);
       console.log('✅ Database connected successfully');
       logger.info('Database connected successfully');
 
@@ -69,7 +76,10 @@ class ProductionServer {
 
       logger.info('Server initialization complete');
     } catch (error) {
+      console.error('❌ Initialization failed:', error.message);
+      console.error('Stack:', error.stack);
       logger.error(`Server initialization failed: ${error.message}`);
+      logger.error(`Stack: ${error.stack}`);
       process.exit(1);
     }
   }
@@ -193,6 +203,7 @@ class ProductionServer {
     this.app.use('/api/blockchain', blockchainRoutes);
     this.app.use('/api/transactions', transactionRoutes);
     this.app.use('/api/contracts', contractRoutes);
+    this.app.use('/api/bridge', bridgeRoutes);
 
     // API documentation
     this.app.get('/api', (req, res) => {
@@ -204,7 +215,8 @@ class ProductionServer {
           wallets: '/api/wallets',
           blockchain: '/api/blockchain',
           transactions: '/api/transactions',
-          contracts: '/api/contracts'
+          contracts: '/api/contracts',
+          bridge: '/api/bridge'
         },
         documentation: '/api/docs'
       });

@@ -54,6 +54,9 @@
                 <div class="nav-item" onclick="showSection('explorer')">
                     <i class="fas fa-search mr-3"></i> Explorer
                 </div>
+                <div class="nav-item" onclick="showSection('bridge')">
+                    <i class="fas fa-bridge mr-3"></i> SOL Bridge
+                </div>
             </nav>
         </div>
         <div class="absolute bottom-0 w-full p-6 border-t border-gray-800">
@@ -206,6 +209,54 @@
                 <div class="glass p-8 rounded-2xl">
                     <h2 class="text-2xl font-bold mb-6">Block Explorer</h2>
                     <div id="blocks-list" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- Bridge Section -->
+            <div id="section-bridge" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-3xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-4">SOL → STRAT Bridge</h2>
+                    <div class="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl mb-6">
+                        <p class="text-sm text-yellow-200"><strong>⚠️ EXPERIMENTAL:</strong> STRAT tokens have no monetary value. This bridge is for testing purposes only. Use at your own risk.</p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3">How it works</h3>
+                            <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                                <li>Send SOL to the bridge address below</li>
+                                <li>Copy your transaction signature</li>
+                                <li>Paste it here to claim your STRAT tokens</li>
+                                <li>Exchange rate: <span class="text-gradient font-bold" id="exchange-rate">1 SOL = 1000 STRAT</span></li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Bridge Address (Send SOL here)</label>
+                            <div class="flex items-center space-x-2">
+                                <input id="bridge-address" readonly class="flex-1 px-4 py-3 rounded-lg font-mono text-sm bg-gray-800/50">
+                                <button onclick="copyBridgeAddress()" class="btn-secondary px-4 py-3 rounded-lg">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Transaction Signature</label>
+                            <input id="bridge-signature" placeholder="Paste your Solana transaction signature" class="w-full px-4 py-3 rounded-xl font-mono text-sm">
+                        </div>
+
+                        <button onclick="verifyBridge()" class="btn-primary w-full px-6 py-4 rounded-xl text-lg">
+                            <i class="fas fa-check-circle mr-2"></i> Verify & Claim STRAT
+                        </button>
+
+                        <div id="bridge-result" class="hidden p-4 rounded-xl"></div>
+
+                        <div class="mt-8">
+                            <h3 class="text-lg font-semibold mb-4">Bridge History</h3>
+                            <div id="bridge-history" class="space-y-3"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -417,6 +468,12 @@
             document.getElementById('section-' + name).classList.remove('hidden');
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             event.target.closest('.nav-item').classList.add('active');
+
+            // Load section-specific data
+            if (name === 'bridge') {
+                loadBridgeInfo();
+                loadBridgeHistory();
+            }
         }
 
         function copyAddress() {
@@ -428,6 +485,95 @@
         function logout() {
             localStorage.removeItem('token');
             location.reload();
+        }
+
+        async function loadBridgeInfo() {
+            try {
+                const res = await fetch(`${API}/bridge/info`);
+                const data = await res.json();
+                document.getElementById('bridge-address').value = data.bridgeAddress;
+                document.getElementById('exchange-rate').textContent = `1 SOL = ${data.exchangeRate} STRAT`;
+            } catch(e) {
+                console.error('Failed to load bridge info:', e);
+            }
+        }
+
+        function copyBridgeAddress() {
+            document.getElementById('bridge-address').select();
+            document.execCommand('copy');
+            alert('Bridge address copied!');
+        }
+
+        async function verifyBridge() {
+            const signature = document.getElementById('bridge-signature').value.trim();
+            const resultDiv = document.getElementById('bridge-result');
+
+            if (!signature) {
+                resultDiv.className = 'p-4 rounded-xl bg-red-900/20 border border-red-500/30';
+                resultDiv.textContent = 'Please enter a transaction signature';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/bridge/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ signature })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    resultDiv.className = 'p-4 rounded-xl bg-green-900/20 border border-green-500/30';
+                    resultDiv.innerHTML = `
+                        <p class="text-green-200 font-semibold mb-2">✓ Bridge Successful!</p>
+                        <p class="text-sm text-gray-300">Received: ${data.solReceived} SOL</p>
+                        <p class="text-sm text-gray-300">Credited: ${data.stratCredited} STRAT</p>
+                        <p class="text-sm text-gray-300">New Balance: ${data.newBalance} STRAT</p>
+                    `;
+                    document.getElementById('bridge-signature').value = '';
+                    loadDashboard();
+                    loadBridgeHistory();
+                } else {
+                    resultDiv.className = 'p-4 rounded-xl bg-red-900/20 border border-red-500/30';
+                    resultDiv.textContent = `Error: ${data.error || 'Bridge verification failed'}`;
+                }
+
+                resultDiv.classList.remove('hidden');
+            } catch(e) {
+                resultDiv.className = 'p-4 rounded-xl bg-red-900/20 border border-red-500/30';
+                resultDiv.textContent = 'Error: ' + e.message;
+                resultDiv.classList.remove('hidden');
+            }
+        }
+
+        async function loadBridgeHistory() {
+            try {
+                const res = await fetch(`${API}/bridge/history`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const data = await res.json();
+
+                const html = data.transactions.length > 0
+                    ? data.transactions.map(tx => `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between">
+                                <div class="text-sm font-semibold">${tx.amount} STRAT</div>
+                                <div class="text-xs text-gray-400">${new Date(tx.timestamp).toLocaleString()}</div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-2 font-mono">${tx.hash.substring(0,40)}...</div>
+                        </div>
+                    `).join('')
+                    : '<div class="text-gray-500 text-center py-4">No bridge transactions yet</div>';
+
+                document.getElementById('bridge-history').innerHTML = html;
+            } catch(e) {
+                console.error('Failed to load bridge history:', e);
+            }
         }
 
         // Initialize chart
