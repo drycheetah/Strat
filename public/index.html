@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STRAT - Next Generation Blockchain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Space Grotesk', sans-serif; }
+        body { background: #0a0a0f; color: #fff; }
+        .gradient-primary { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .text-gradient { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-primary { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); border: none; color: #000; font-weight: 600; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(20, 241, 149, 0.4); }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .float { animation: float 6s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+    <nav class="fixed top-0 w-full z-50 glass">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gradient">STRAT</h1>
+            <button onclick="location.href='/dashboard.html'" class="btn-primary px-6 py-2 rounded-full">Launch App</button>
+        </div>
+    </nav>
+
+    <section class="min-h-screen flex items-center pt-20">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="space-y-8">
+                    <h1 class="text-6xl md:text-7xl font-bold">The Future of <span class="text-gradient">Blockchain</span></h1>
+                    <p class="text-xl text-gray-400">Fast, secure, scalable blockchain with smart contracts. Built for the next generation of decentralized applications.</p>
+                    <button onclick="location.href='/dashboard.html'" class="btn-primary px-8 py-4 rounded-full text-lg">Get Started</button>
+                    <div class="grid grid-cols-3 gap-6 pt-8">
+                        <div><div class="text-3xl font-bold text-gradient" id="blocks">0</div><div class="text-sm text-gray-500">Blocks</div></div>
+                        <div><div class="text-3xl font-bold text-gradient" id="supply">0</div><div class="text-sm text-gray-500">Supply</div></div>
+                        <div><div class="text-3xl font-bold text-gradient">10s</div><div class="text-sm text-gray-500">Block Time</div></div>
+                    </div>
+                </div>
+                <div class="glass p-8 rounded-3xl float">
+                    <canvas id="chart" width="400" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        new Chart(document.getElementById('chart'), {
+            type: 'line',
+            data: { labels: ['','','','','',''], datasets: [{ data: [12,19,3,5,2,3], borderColor: '#14f195', backgroundColor: 'rgba(20,241,149,0.1)', tension: 0.4, fill: true }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
+        });
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/blockchain/stats');
+                const data = await res.json();
+                if (data.stats) {
+                    document.getElementById('blocks').textContent = data.stats.blockHeight;
+                    document.getElementById('supply').textContent = Math.floor(data.stats.totalSupply);
+                }
+            } catch(e) {}
+        }
+        loadStats();
+        setInterval(loadStats, 10000);
+    </script>
+</body>
+</html>

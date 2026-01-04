@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STRAT Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Space Grotesk', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; color: #fff; }
+        .gradient-primary { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .text-gradient { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-primary { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); border: none; color: #000; font-weight: 600; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(20, 241, 149, 0.4); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; transition: all 0.3s; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: #14f195; }
+        input, textarea { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; outline: none; }
+        input:focus, textarea:focus { border-color: #14f195; box-shadow: 0 0 20px rgba(20, 241, 149, 0.2); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(10px); border-right: 1px solid rgba(255, 255, 255, 0.1); z-index: 100; }
+        .main-content { margin-left: 260px; min-height: 100vh; }
+        .nav-item { padding: 12px 20px; margin: 4px 10px; border-radius: 12px; cursor: pointer; transition: all 0.3s; }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.05); }
+        .nav-item.active { background: linear-gradient(135deg, rgba(20, 241, 149, 0.1) 0%, rgba(153, 69, 255, 0.1) 100%); border-left: 3px solid #14f195; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="p-6">
+            <h1 class="text-2xl font-bold text-gradient mb-8">STRAT</h1>
+            <nav class="space-y-2">
+                <div class="nav-item active" onclick="showSection('overview')">
+                    <i class="fas fa-chart-line mr-3"></i> Overview
+                </div>
+                <div class="nav-item" onclick="showSection('wallet')">
+                    <i class="fas fa-wallet mr-3"></i> My Wallet
+                </div>
+                <div class="nav-item" onclick="showSection('send')">
+                    <i class="fas fa-paper-plane mr-3"></i> Send
+                </div>
+                <div class="nav-item" onclick="showSection('mine')">
+                    <i class="fas fa-cube mr-3"></i> Mining
+                </div>
+                <div class="nav-item" onclick="showSection('contracts')">
+                    <i class="fas fa-file-contract mr-3"></i> Smart Contracts
+                </div>
+                <div class="nav-item" onclick="showSection('explorer')">
+                    <i class="fas fa-search mr-3"></i> Explorer
+                </div>
+            </nav>
+        </div>
+        <div class="absolute bottom-0 w-full p-6 border-t border-gray-800">
+            <button onclick="logout()" class="w-full btn-secondary px-4 py-2 rounded-lg">
+                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="glass sticky top-0 z-50">
+            <div class="container mx-auto px-8 py-4 flex justify-between items-center">
+                <div>
+                    <div class="text-sm text-gray-400">Welcome back</div>
+                    <div class="text-lg font-semibold" id="username">Loading...</div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="glass px-4 py-2 rounded-full">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-sm">Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-8">
+            <!-- Overview Section -->
+            <div id="section-overview">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Block Height</div>
+                        <div class="text-3xl font-bold text-gradient" id="stat-height">0</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Difficulty</div>
+                        <div class="text-3xl font-bold text-gradient" id="stat-diff">0</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Pending TXs</div>
+                        <div class="text-3xl font-bold text-gradient" id="stat-pending">0</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Hash Rate</div>
+                        <div class="text-3xl font-bold text-gradient" id="stat-hash">0 H/s</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="glass p-6 rounded-2xl">
+                        <h3 class="text-xl font-bold mb-4">Network Activity</h3>
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <h3 class="text-xl font-bold mb-4">Recent Blocks</h3>
+                        <div id="recent-blocks" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallet Section -->
+            <div id="section-wallet" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">My Wallet</h2>
+                    <div class="bg-gradient-to-r from-green-900/20 to-purple-900/20 p-6 rounded-xl mb-6">
+                        <div class="text-sm text-gray-400 mb-2">Total Balance</div>
+                        <div class="text-5xl font-bold text-gradient" id="wallet-balance">0.00 STRAT</div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="text-sm text-gray-400 mb-2">Wallet Address</div>
+                        <div class="flex items-center space-x-2">
+                            <input id="wallet-address" readonly class="flex-1 px-4 py-3 rounded-lg font-mono text-sm">
+                            <button onclick="copyAddress()" class="btn-secondary px-4 py-3 rounded-lg">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-8 rounded-2xl">
+                    <h3 class="text-xl font-bold mb-4">Transaction History</h3>
+                    <div id="tx-history" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- Send Section -->
+            <div id="section-send" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-2xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-6">Send STRAT</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Recipient Address</label>
+                            <input id="send-address" placeholder="STRAT..." class="w-full px-4 py-3 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Amount</label>
+                            <input id="send-amount" type="number" step="0.01" placeholder="0.00" class="w-full px-4 py-3 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Password</label>
+                            <input id="send-password" type="password" placeholder="Enter your password" class="w-full px-4 py-3 rounded-xl">
+                        </div>
+                        <button onclick="sendTransaction()" class="btn-primary w-full px-6 py-4 rounded-xl text-lg">
+                            Send Transaction
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mining Section -->
+            <div id="section-mine" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-2xl mx-auto text-center">
+                    <h2 class="text-2xl font-bold mb-4">Mine New Block</h2>
+                    <p class="text-gray-400 mb-6">Mine a new block and earn 50 STRAT reward</p>
+                    <button id="mine-btn" onclick="startMining()" class="btn-primary px-12 py-4 rounded-xl text-lg">
+                        <i class="fas fa-cube mr-2"></i> Start Mining
+                    </button>
+                    <div id="mine-status" class="mt-6 hidden">
+                        <div class="text-green-400 mb-2">Mining in progress...</div>
+                        <div class="text-sm text-gray-400">This may take a while depending on difficulty</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Smart Contracts Section -->
+            <div id="section-contracts" class="hidden">
+                <div class="glass p-8 rounded-2xl">
+                    <h2 class="text-2xl font-bold mb-6">Smart Contracts</h2>
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">Contract Code (JavaScript)</label>
+                        <textarea id="contract-code" rows="10" placeholder="// Example: const count = state.count || 0; state.count++; return {count: state.count};" class="w-full px-4 py-3 rounded-xl font-mono text-sm"></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">Password</label>
+                        <input id="contract-password" type="password" class="w-full px-4 py-3 rounded-xl">
+                    </div>
+                    <button onclick="deployContract()" class="btn-primary px-8 py-3 rounded-xl">
+                        Deploy Contract
+                    </button>
+                </div>
+            </div>
+
+            <!-- Explorer Section -->
+            <div id="section-explorer" class="hidden">
+                <div class="glass p-8 rounded-2xl">
+                    <h2 class="text-2xl font-bold mb-6">Block Explorer</h2>
+                    <div id="blocks-list" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal active">
+        <div class="glass p-8 rounded-3xl w-full max-w-md mx-4">
+            <h2 class="text-3xl font-bold text-center mb-6">Welcome to STRAT</h2>
+            <div class="space-y-4">
+                <input id="login-email" type="email" placeholder="Email" class="w-full px-4 py-3 rounded-xl">
+                <div>
+                    <input id="login-password" type="password" placeholder="Password" class="w-full px-4 py-3 rounded-xl">
+                    <div class="text-xs text-gray-500 mt-1">
+                        Min 8 characters, must include uppercase, lowercase, and number
+                    </div>
+                </div>
+                <div id="login-error" class="hidden text-red-400 text-sm text-center"></div>
+                <button onclick="login()" class="btn-primary w-full px-6 py-4 rounded-xl text-lg">
+                    Launch Dashboard
+                </button>
+                <div class="text-center text-sm text-gray-400">
+                    New user? Wallet created automatically on first login
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3000/api';
+        let token = localStorage.getItem('token');
+        let userData = null;
+        let walletData = null;
+
+        // Check auth
+        if (!token) {
+            document.getElementById('loginModal').classList.add('active');
+        } else {
+            // Verify token is valid by attempting to load dashboard
+            loadDashboard().catch(() => {
+                // If loading fails, clear token and show login
+                localStorage.removeItem('token');
+                token = null;
+                document.getElementById('loginModal').classList.add('active');
+            });
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            errorDiv.classList.add('hidden');
+
+            try {
+                let res = await fetch(`${API}/auth/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email, password})
+                });
+
+                if (!res.ok) {
+                    // Try registering if login fails
+                    res = await fetch(`${API}/auth/register`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email, username: email.split('@')[0], password})
+                    });
+                }
+
+                const data = await res.json();
+
+                if (data.token) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    document.getElementById('loginModal').classList.remove('active');
+                    loadDashboard();
+                } else if (data.details && data.details.length > 0) {
+                    // Show validation errors
+                    errorDiv.textContent = data.details.map(d => d.message).join(', ');
+                    errorDiv.classList.remove('hidden');
+                } else if (data.error || data.message) {
+                    errorDiv.textContent = data.error || data.message;
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    errorDiv.textContent = 'Login failed. Please check your credentials.';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch(e) {
+                errorDiv.textContent = 'Login error: ' + e.message;
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const [stats, wallets] = await Promise.all([
+                    fetch(`${API}/blockchain/stats`).then(r => r.json()),
+                    fetch(`${API}/wallets`, {headers: {'Authorization': `Bearer ${token}`}}).then(r => r.json())
+                ]);
+
+                document.getElementById('stat-height').textContent = stats.stats.blockHeight;
+                document.getElementById('stat-diff').textContent = stats.stats.difficulty;
+                document.getElementById('stat-pending').textContent = stats.stats.pendingTransactions;
+                document.getElementById('stat-hash').textContent = stats.stats.hashRate + ' H/s';
+
+                if (wallets.wallets && wallets.wallets[0]) {
+                    walletData = wallets.wallets[0];
+                    document.getElementById('wallet-balance').textContent = walletData.balance.toFixed(2) + ' STRAT';
+                    document.getElementById('wallet-address').value = walletData.address;
+                }
+
+                loadBlocks();
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        async function loadBlocks() {
+            try {
+                const res = await fetch(`${API}/blockchain/blocks?limit=5`);
+                const data = await res.json();
+                const html = data.blocks.map(b => `
+                    <div class="bg-white/5 p-4 rounded-xl">
+                        <div class="flex justify-between">
+                            <div><span class="font-bold">Block #${b.index}</span></div>
+                            <div class="text-sm text-gray-400">${new Date(b.timestamp).toLocaleString()}</div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2 font-mono">${b.hash.substring(0,40)}...</div>
+                    </div>
+                `).join('');
+                document.getElementById('recent-blocks').innerHTML = html;
+                document.getElementById('blocks-list').innerHTML = html;
+            } catch(e) {}
+        }
+
+        async function startMining() {
+            document.getElementById('mine-status').classList.remove('hidden');
+            document.getElementById('mine-btn').disabled = true;
+            try {
+                await fetch(`${API}/blockchain/mine`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                alert('Mining started! Check back in a few moments.');
+                setTimeout(loadDashboard, 5000);
+            } catch(e) {
+                alert('Mining error: ' + e.message);
+            } finally {
+                document.getElementById('mine-status').classList.add('hidden');
+                document.getElementById('mine-btn').disabled = false;
+            }
+        }
+
+        async function sendTransaction() {
+            const address = document.getElementById('send-address').value;
+            const amount = parseFloat(document.getElementById('send-amount').value);
+            const password = document.getElementById('send-password').value;
+
+            try {
+                await fetch(`${API}/transactions/send`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({fromWalletId: walletData._id, toAddress: address, amount, password})
+                });
+                alert('Transaction sent successfully!');
+                loadDashboard();
+            } catch(e) {
+                alert('Transaction error: ' + e.message);
+            }
+        }
+
+        async function deployContract() {
+            const code = document.getElementById('contract-code').value;
+            const password = document.getElementById('contract-password').value;
+
+            try {
+                await fetch(`${API}/contracts/deploy`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({walletId: walletData._id, code, password, gasLimit: 100000, gasPrice: 1})
+                });
+                alert('Contract deployed! Mine a block to activate it.');
+            } catch(e) {
+                alert('Deploy error: ' + e.message);
+            }
+        }
+
+        function showSection(name) {
+            document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('section-' + name).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+        }
+
+        function copyAddress() {
+            document.getElementById('wallet-address').select();
+            document.execCommand('copy');
+            alert('Address copied!');
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            location.reload();
+        }
+
+        // Initialize chart
+        new Chart(document.getElementById('activityChart'), {
+            type: 'line',
+            data: { labels: ['','','','','',''], datasets: [{ data: [12,19,3,5,2,3], borderColor: '#14f195', backgroundColor: 'rgba(20,241,149,0.1)', tension: 0.4, fill: true }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
+        });
+
+        setInterval(loadDashboard, 10000);
+    </script>
+</body>
+</html>
