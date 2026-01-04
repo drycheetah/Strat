@@ -5,14 +5,14 @@ const CryptoUtils = require('./crypto');
 class Blockchain {
   constructor() {
     this.chain = [this.createGenesisBlock()];
-    this.difficulty = 4;
-    this.miningReward = 50;
-    this.transactionFee = 0.01;
+    this.difficulty = parseInt(process.env.MINING_DIFFICULTY) || 4;
+    this.miningReward = parseFloat(process.env.MINING_REWARD) || 50;
+    this.transactionFee = parseFloat(process.env.TRANSACTION_FEE) || 0.01;
     this.pendingTransactions = [];
     this.utxos = new Map();
     this.contracts = new Map();
-    this.blockTime = 10000;
-    this.difficultyAdjustmentInterval = 10;
+    this.blockTime = parseInt(process.env.BLOCK_TIME_TARGET) || 10000;
+    this.difficultyAdjustmentInterval = parseInt(process.env.DIFFICULTY_ADJUSTMENT_INTERVAL) || 10;
 
     this.initializeGenesisUTXO();
   }
