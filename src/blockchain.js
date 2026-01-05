@@ -10,6 +10,7 @@ class Blockchain {
     this.transactionFee = parseFloat(process.env.TRANSACTION_FEE) || 0.01;
     this.pendingTransactions = [];
     this.utxos = new Map();
+    this.spentInMempool = new Set(); // Track UTXOs spent in pending transactions
     this.contracts = new Map();
     this.blockTime = parseInt(process.env.BLOCK_TIME_TARGET) || 10000;
     this.difficultyAdjustmentInterval = parseInt(process.env.DIFFICULTY_ADJUSTMENT_INTERVAL) || 10;
@@ -74,6 +75,7 @@ class Blockchain {
     this.updateUTXOs(block);
 
     this.pendingTransactions = [];
+    this.spentInMempool.clear(); // Clear spent UTXOs tracking
 
     this.adjustDifficulty();
 
@@ -138,6 +140,14 @@ class Blockchain {
       throw new Error('Cannot add invalid transaction');
     }
 
+    // Mark UTXOs as spent in mempool
+    if (!transaction.isCoinbase && !transaction.isContractDeploy && !transaction.isContractCall) {
+      for (let input of transaction.inputs) {
+        const utxoKey = `${input.txHash}:${input.outputIndex}`;
+        this.spentInMempool.add(utxoKey);
+      }
+    }
+
     this.pendingTransactions.push(transaction);
   }
 
@@ -170,6 +180,12 @@ class Blockchain {
           return false;
         }
 
+        // Check if UTXO is already spent in mempool
+        if (this.spentInMempool.has(utxoKey)) {
+          console.log('Invalid transaction: UTXO already spent in mempool', utxoKey);
+          return false;
+        }
+
         if (address !== utxo.address) {
           console.log('Invalid transaction: Address does not match UTXO owner');
           console.log('Transaction address:', address, 'UTXO address:', utxo.address);
@@ -190,6 +206,12 @@ class Blockchain {
 
         if (!utxo) {
           console.log('Invalid transaction: UTXO not found', utxoKey);
+          return false;
+        }
+
+        // Check if UTXO is already spent in mempool
+        if (this.spentInMempool.has(utxoKey)) {
+          console.log('Invalid transaction: UTXO already spent in mempool', utxoKey);
           return false;
         }
       }
@@ -217,7 +239,8 @@ class Blockchain {
   getBalance(address) {
     let balance = 0;
     for (let [key, utxo] of this.utxos) {
-      if (utxo.address === address) {
+      // Skip UTXOs that are already spent in pending transactions
+      if (utxo.address === address && !this.spentInMempool.has(key)) {
         balance += utxo.amount;
       }
     }
@@ -227,7 +250,8 @@ class Blockchain {
   getUTXOsForAddress(address) {
     const addressUTXOs = [];
     for (let [key, utxo] of this.utxos) {
-      if (utxo.address === address) {
+      // Skip UTXOs that are already spent in pending transactions
+      if (utxo.address === address && !this.spentInMempool.has(key)) {
         addressUTXOs.push(utxo);
       }
     }
