@@ -13,7 +13,7 @@ const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 1000; // 1
 exports.getBridgeInfo = async (req, res) => {
   try {
     res.json({
-      bridgeAddress: BRIDGE_ADDRESS,
+      bridgeAddress: "7B44YFiRvjFZe7FgRavwKApcpAF452JcMXR4E4befpAq ",
       exchangeRate: EXCHANGE_RATE,
       network: 'mainnet-beta',
       disclaimer: 'EXPERIMENTAL FEATURE: STRAT tokens have no monetary value. This bridge is for testing purposes only.'
