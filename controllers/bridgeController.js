@@ -59,12 +59,21 @@ exports.verifyDeposit = async (req, res) => {
 
     // Get account keys - handle both legacy and versioned transactions
     let accountKeys;
-    if (tx.transaction.message.accountKeys) {
-      accountKeys = tx.transaction.message.accountKeys;
-    } else if (tx.transaction.message.staticAccountKeys) {
-      accountKeys = tx.transaction.message.staticAccountKeys;
-    } else {
-      return res.status(400).json({ error: 'Could not parse transaction account keys' });
+    try {
+      // Try to get keys using getAccountKeys() for versioned transactions
+      if (tx.transaction.message.getAccountKeys) {
+        const keys = tx.transaction.message.getAccountKeys();
+        accountKeys = keys.staticAccountKeys || keys;
+      } else if (tx.transaction.message.accountKeys) {
+        accountKeys = tx.transaction.message.accountKeys;
+      } else if (tx.transaction.message.staticAccountKeys) {
+        accountKeys = tx.transaction.message.staticAccountKeys;
+      } else {
+        return res.status(400).json({ error: 'Could not parse transaction account keys' });
+      }
+    } catch (e) {
+      logger.error(`Error parsing account keys: ${e.message}`);
+      return res.status(400).json({ error: 'Could not parse transaction account keys', details: e.message });
     }
 
     // Find our bridge address in the account keys
@@ -72,14 +81,26 @@ exports.verifyDeposit = async (req, res) => {
     for (let i = 0; i < accountKeys.length; i++) {
       try {
         const key = accountKeys[i];
-        // Convert to string first to avoid _bn issues
-        const keyStr = key.toString ? key.toString() : key.toBase58 ? key.toBase58() : String(key);
+        // Convert to base58 string safely
+        let keyStr;
+        if (typeof key === 'string') {
+          keyStr = key;
+        } else if (key.toBase58) {
+          keyStr = key.toBase58();
+        } else if (key.toString) {
+          keyStr = key.toString();
+        } else {
+          // If it's a raw public key object, try to create PublicKey directly
+          keyStr = new PublicKey(key).toBase58();
+        }
+
         const pubkey = new PublicKey(keyStr);
-        if (pubkey.equals(bridgePubkey)) {
+        if (pubkey.toBase58() === bridgePubkey.toBase58()) {
           bridgeIndex = i;
           break;
         }
       } catch (e) {
+        logger.error(`Error processing account key at index ${i}: ${e.message}`);
         continue;
       }
     }

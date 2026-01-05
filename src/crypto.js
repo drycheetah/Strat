@@ -4,7 +4,15 @@ const ec = new EC('secp256k1');
 
 class CryptoUtils {
   static hash(data) {
-    return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
+    if (!data) {
+      throw new Error('data argument required for hashing');
+    }
+    try {
+      return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
+    } catch (error) {
+      console.error('Hash error:', error.message, 'Data:', data);
+      throw error;
+    }
   }
 
   static generateKeyPair() {
@@ -20,6 +28,12 @@ class CryptoUtils {
   }
 
   static signData(data, privateKey) {
+    if (!data) {
+      throw new Error('data argument required for signing');
+    }
+    if (!privateKey) {
+      throw new Error('privateKey argument required for signing');
+    }
     const keyPair = ec.keyFromPrivate(privateKey);
     const signature = keyPair.sign(data);
     return signature.toDER('hex');
