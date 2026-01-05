@@ -8,7 +8,7 @@ const logger = require('../utils/logger');
  */
 const sendTransaction = async (req, res) => {
   try {
-    const { fromWalletId, toAddress, amount, password, fee } = req.body;
+    const { fromWalletId, toAddress, amount, fee } = req.body;
     const blockchain = req.blockchain;
 
     logger.info(`Send transaction request: fromWalletId=${fromWalletId}, toAddress=${toAddress}, amount=${amount}`);
@@ -27,16 +27,23 @@ const sendTransaction = async (req, res) => {
       });
     }
 
-    // Decrypt private key - this will fail if password is wrong
+    // Extract private key - check if it's in simplified format first
     let privateKey;
-    try {
-      privateKey = wallet.decryptPrivateKey(password);
-    } catch (error) {
-      logger.error(`Failed to decrypt private key: ${error.message}`);
-      return res.status(401).json({
-        error: 'Invalid password',
-        message: 'Could not decrypt wallet with provided password'
-      });
+    if (wallet.encryptedPrivateKey.includes(':::')) {
+      // Simplified format: privateKey:::
+      privateKey = wallet.encryptedPrivateKey.split(':::')[0];
+      logger.info('Using simplified private key format');
+    } else {
+      // Encrypted format - try to decrypt with username as password
+      try {
+        privateKey = wallet.decryptPrivateKey(req.user.username);
+      } catch (error) {
+        logger.error(`Failed to decrypt private key: ${error.message}`);
+        return res.status(500).json({
+          error: 'Wallet decryption failed',
+          message: 'Unable to access wallet private key'
+        });
+      }
     }
 
     // Get UTXOs for this wallet
