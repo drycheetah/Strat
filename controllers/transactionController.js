@@ -1,6 +1,7 @@
 const Wallet = require('../models/Wallet');
 const HDWallet = require('../src/hdwallet');
 const { Transaction, TransactionInput, TransactionOutput } = require('../src/transaction');
+const CryptoUtils = require('../src/crypto');
 const logger = require('../utils/logger');
 
 /**
@@ -90,12 +91,16 @@ const sendTransaction = async (req, res) => {
       outputs.push(new TransactionOutput(wallet.address, change));
     }
 
+    // Get public key from private key for validation
+    const publicKey = CryptoUtils.getPublicKeyFromPrivate(privateKey);
+
     // Create transaction
     logger.info(`Creating transaction with ${inputs.length} inputs and ${outputs.length} outputs`);
     logger.info(`Inputs: ${JSON.stringify(inputs.map(i => ({ txHash: i.txHash, outputIndex: i.outputIndex })))}`);
     logger.info(`Outputs: ${JSON.stringify(outputs.map(o => ({ address: o.address, amount: o.amount })))}`);
 
     const transaction = new Transaction(inputs, outputs);
+    transaction.publicKey = publicKey; // Store public key for validation
 
     logger.info(`Transaction created with hash: ${transaction.hash}`);
 

@@ -156,27 +156,42 @@ class Blockchain {
       return false;
     }
 
-    for (let i = 0; i < transaction.inputs.length; i++) {
-      const input = transaction.inputs[i];
-      const utxoKey = `${input.txHash}:${input.outputIndex}`;
-      const utxo = this.utxos.get(utxoKey);
+    // Verify signatures if public key is provided
+    if (transaction.publicKey) {
+      const address = CryptoUtils.publicKeyToAddress(transaction.publicKey);
 
-      if (!utxo) {
-        console.log('Invalid transaction: UTXO not found');
-        return false;
+      for (let i = 0; i < transaction.inputs.length; i++) {
+        const input = transaction.inputs[i];
+        const utxoKey = `${input.txHash}:${input.outputIndex}`;
+        const utxo = this.utxos.get(utxoKey);
+
+        if (!utxo) {
+          console.log('Invalid transaction: UTXO not found', utxoKey);
+          return false;
+        }
+
+        if (address !== utxo.address) {
+          console.log('Invalid transaction: Address does not match UTXO owner');
+          console.log('Transaction address:', address, 'UTXO address:', utxo.address);
+          return false;
+        }
+
+        if (!transaction.verifySignature(i, transaction.publicKey)) {
+          console.log('Invalid transaction: Invalid signature for input', i);
+          return false;
+        }
       }
+    } else {
+      // If no public key provided, just verify UTXOs exist
+      for (let i = 0; i < transaction.inputs.length; i++) {
+        const input = transaction.inputs[i];
+        const utxoKey = `${input.txHash}:${input.outputIndex}`;
+        const utxo = this.utxos.get(utxoKey);
 
-      const publicKey = CryptoUtils.getPublicKeyFromPrivate(input.signature);
-      const address = CryptoUtils.publicKeyToAddress(publicKey);
-
-      if (address !== utxo.address) {
-        console.log('Invalid transaction: Signature does not match UTXO owner');
-        return false;
-      }
-
-      if (!transaction.verifySignature(i, publicKey)) {
-        console.log('Invalid transaction: Invalid signature');
-        return false;
+        if (!utxo) {
+          console.log('Invalid transaction: UTXO not found', utxoKey);
+          return false;
+        }
       }
     }
 
