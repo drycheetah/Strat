@@ -428,7 +428,7 @@
 
         async function loadBlocks() {
             try {
-                const res = await fetch(`${API}/blockchain/blocks?limit=5`);
+                const res = await fetch(`${API}/blockchain/blocks?limit=50`);
                 const data = await res.json();
                 const html = data.blocks.map(b => `
                     <div class="bg-white/5 p-4 rounded-xl">
