@@ -1,5 +1,6 @@
 const { Connection, PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const Wallet = require('../models/Wallet');
+const BridgeTransaction = require('../models/BridgeTransaction');
 const { Transaction } = require('../src/transaction');
 const logger = require('../utils/logger');
 
@@ -52,19 +53,34 @@ exports.verifyDeposit = async (req, res) => {
     }
 
     // Verify the transaction sent SOL to our bridge address
-    const bridgePubkey = new PublicKey(BRIDGE_ADDRESS);
+    const bridgePubkey = new PublicKey(BRIDGE_ADDRESS.trim());
     const postBalances = tx.meta.postBalances;
     const preBalances = tx.meta.preBalances;
-    const accountKeys = tx.transaction.message.accountKeys;
+
+    // Get account keys - handle both legacy and versioned transactions
+    let accountKeys;
+    if (tx.transaction.message.accountKeys) {
+      accountKeys = tx.transaction.message.accountKeys;
+    } else if (tx.transaction.message.staticAccountKeys) {
+      accountKeys = tx.transaction.message.staticAccountKeys;
+    } else {
+      return res.status(400).json({ error: 'Could not parse transaction account keys' });
+    }
 
     // Find our bridge address in the account keys
     let bridgeIndex = -1;
     for (let i = 0; i < accountKeys.length; i++) {
-      const key = accountKeys[i];
-      const pubkey = typeof key === 'string' ? new PublicKey(key) : key;
-      if (pubkey.equals(bridgePubkey)) {
-        bridgeIndex = i;
-        break;
+      try {
+        const key = accountKeys[i];
+        // Convert to string first to avoid _bn issues
+        const keyStr = key.toString ? key.toString() : key.toBase58 ? key.toBase58() : String(key);
+        const pubkey = new PublicKey(keyStr);
+        if (pubkey.equals(bridgePubkey)) {
+          bridgeIndex = i;
+          break;
+        }
+      } catch (e) {
+        continue;
       }
     }
 
@@ -83,6 +99,12 @@ exports.verifyDeposit = async (req, res) => {
     const stratToCredit = solReceived * EXCHANGE_RATE;
 
     logger.info(`SOL deposit verified: ${solReceived} SOL = ${stratToCredit} STRAT`);
+
+    // Check if this transaction was already processed
+    const existingBridge = await BridgeTransaction.findOne({ solanaSignature: signature });
+    if (existingBridge) {
+      return res.status(400).json({ error: 'This transaction has already been processed' });
+    }
 
     // Get user's wallet
     const wallet = await Wallet.findOne({ user: userId });
@@ -105,15 +127,19 @@ exports.verifyDeposit = async (req, res) => {
 
     // Update wallet balance
     wallet.balance += stratToCredit;
-    wallet.transactions.push({
-      hash: signature,
-      type: 'bridge_deposit',
-      amount: stratToCredit,
-      from: 'SOL Bridge',
-      to: wallet.address,
-      timestamp: new Date()
-    });
     await wallet.save();
+
+    // Record the bridge transaction
+    const bridgeRecord = new BridgeTransaction({
+      user: userId,
+      walletAddress: wallet.address,
+      solanaSignature: signature,
+      solAmount: solReceived,
+      stratAmount: stratToCredit,
+      exchangeRate: EXCHANGE_RATE,
+      status: 'completed'
+    });
+    await bridgeRecord.save();
 
     logger.info(`Credited ${stratToCredit} STRAT to user ${userId} from SOL deposit`);
 
@@ -138,17 +164,23 @@ exports.verifyDeposit = async (req, res) => {
 exports.getBridgeHistory = async (req, res) => {
   try {
     const userId = req.user._id;
-    const wallet = await Wallet.findOne({ user: userId });
 
-    if (!wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
-    }
+    const bridgeTransactions = await BridgeTransaction.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .limit(50);
 
-    const bridgeTransactions = wallet.transactions.filter(tx => tx.type === 'bridge_deposit');
+    const totalBridged = bridgeTransactions.reduce((sum, tx) => sum + tx.stratAmount, 0);
 
     res.json({
-      transactions: bridgeTransactions,
-      totalBridged: bridgeTransactions.reduce((sum, tx) => sum + tx.amount, 0)
+      transactions: bridgeTransactions.map(tx => ({
+        solanaSignature: tx.solanaSignature,
+        solAmount: tx.solAmount,
+        stratAmount: tx.stratAmount,
+        exchangeRate: tx.exchangeRate,
+        status: tx.status,
+        timestamp: tx.createdAt
+      })),
+      totalBridged
     });
 
   } catch (error) {

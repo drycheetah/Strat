@@ -435,11 +435,15 @@
             const password = document.getElementById('send-password').value;
 
             try {
-                await fetch(`${API}/transactions/send`, {
+                const res = await fetch(`${API}/transactions/send`, {
                     method: 'POST',
                     headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
                     body: JSON.stringify({fromWalletId: walletData._id, toAddress: address, amount, password})
                 });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.message || data.error || 'Transaction failed');
+                }
                 alert('Transaction sent successfully!');
                 loadDashboard();
             } catch(e) {
@@ -540,7 +544,8 @@
                     loadBridgeHistory();
                 } else {
                     resultDiv.className = 'p-4 rounded-xl bg-red-900/20 border border-red-500/30';
-                    resultDiv.textContent = `Error: ${data.error || 'Bridge verification failed'}`;
+                    const errorMsg = data.details ? `${data.error}: ${data.details}` : (data.error || 'Bridge verification failed');
+                    resultDiv.textContent = errorMsg;
                 }
 
                 resultDiv.classList.remove('hidden');

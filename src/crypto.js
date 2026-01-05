@@ -27,9 +27,14 @@ class CryptoUtils {
 
   static verifySignature(data, signature, publicKey) {
     try {
+      if (!data || !signature || !publicKey) {
+        console.error('Missing parameters for signature verification:', { data: !!data, signature: !!signature, publicKey: !!publicKey });
+        return false;
+      }
       const key = ec.keyFromPublic(publicKey, 'hex');
       return key.verify(data, signature);
     } catch (error) {
+      console.error('Signature verification error:', error.message);
       return false;
     }
   }
