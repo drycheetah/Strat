@@ -5,10 +5,14 @@ const ec = new EC('secp256k1');
 class CryptoUtils {
   static hash(data) {
     if (!data) {
+      console.error('CryptoUtils.hash called with no data');
       throw new Error('data argument required for hashing');
     }
     try {
-      return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
+      const jsonString = JSON.stringify(data);
+      const hashResult = crypto.createHash('sha256').update(jsonString).digest('hex');
+      console.log('Hash created successfully:', hashResult.substring(0, 16) + '...');
+      return hashResult;
     } catch (error) {
       console.error('Hash error:', error.message, 'Data:', data);
       throw error;

@@ -27,8 +27,12 @@ const sendTransaction = async (req, res) => {
       });
     }
 
-    // Verify user password
-    const user = await req.user.populate('password');
+    // Verify user password - need to fetch user with password field
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({
