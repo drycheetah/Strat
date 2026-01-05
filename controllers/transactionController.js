@@ -11,11 +11,15 @@ const sendTransaction = async (req, res) => {
     const { fromWalletId, toAddress, amount, password, fee } = req.body;
     const blockchain = req.blockchain;
 
+    logger.info(`Send transaction request: fromWalletId=${fromWalletId}, toAddress=${toAddress}, amount=${amount}`);
+
     // Get sender wallet
     const wallet = await Wallet.findOne({
       _id: fromWalletId,
       user: req.user._id
     });
+
+    logger.info(`Wallet found: ${wallet ? wallet.address : 'NOT FOUND'}`);
 
     if (!wallet) {
       return res.status(404).json({
@@ -80,7 +84,13 @@ const sendTransaction = async (req, res) => {
     }
 
     // Create transaction
+    logger.info(`Creating transaction with ${inputs.length} inputs and ${outputs.length} outputs`);
+    logger.info(`Inputs: ${JSON.stringify(inputs.map(i => ({ txHash: i.txHash, outputIndex: i.outputIndex })))}`);
+    logger.info(`Outputs: ${JSON.stringify(outputs.map(o => ({ address: o.address, amount: o.amount })))}`);
+
     const transaction = new Transaction(inputs, outputs);
+
+    logger.info(`Transaction created with hash: ${transaction.hash}`);
 
     // Sign all inputs
     for (let i = 0; i < inputs.length; i++) {

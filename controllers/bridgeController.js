@@ -13,8 +13,11 @@ const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 5; // 1 SO
  */
 exports.getBridgeInfo = async (req, res) => {
   try {
+    if (!BRIDGE_ADDRESS) {
+      return res.status(500).json({ error: 'Bridge not configured' });
+    }
     res.json({
-      bridgeAddress: "7B44YFiRvjFZe7FgRavwKApcpAF452JcMXR4E4befpAq ",
+      bridgeAddress: BRIDGE_ADDRESS,
       exchangeRate: EXCHANGE_RATE,
       network: 'mainnet-beta',
       disclaimer: 'EXPERIMENTAL FEATURE: STRAT tokens have no monetary value. This bridge is for testing purposes only.'
@@ -37,6 +40,11 @@ exports.verifyDeposit = async (req, res) => {
       return res.status(400).json({ error: 'Transaction signature required' });
     }
 
+    // Check if bridge is configured
+    if (!BRIDGE_ADDRESS) {
+      return res.status(500).json({ error: 'Bridge not configured', details: 'BRIDGE_SOL_ADDRESS environment variable is missing' });
+    }
+
     logger.info(`Verifying SOL deposit: ${signature} for user ${userId}`);
 
     // Fetch transaction from Solana
@@ -53,7 +61,7 @@ exports.verifyDeposit = async (req, res) => {
     }
 
     // Verify the transaction sent SOL to our bridge address
-    const bridgePubkey = new PublicKey(BRIDGE_ADDRESS.trim());
+    const bridgePubkey = new PublicKey(BRIDGE_ADDRESS?.trim() || BRIDGE_ADDRESS);
     const postBalances = tx.meta.postBalances;
     const preBalances = tx.meta.preBalances;
 

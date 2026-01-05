@@ -24,12 +24,33 @@ class Transaction {
   }
 
   calculateHash() {
-    const data = {
-      inputs: this.inputs.map(input => ({ txHash: input.txHash, outputIndex: input.outputIndex })),
-      outputs: this.outputs,
-      timestamp: this.timestamp
-    };
-    return CryptoUtils.hash(data);
+    try {
+      if (!Array.isArray(this.inputs)) {
+        console.error('Transaction inputs is not an array:', this.inputs);
+        throw new Error('Transaction inputs must be an array');
+      }
+      if (!Array.isArray(this.outputs)) {
+        console.error('Transaction outputs is not an array:', this.outputs);
+        throw new Error('Transaction outputs must be an array');
+      }
+
+      const data = {
+        inputs: this.inputs.map(input => {
+          if (!input || typeof input !== 'object') {
+            throw new Error('Invalid input object');
+          }
+          return { txHash: input.txHash, outputIndex: input.outputIndex };
+        }),
+        outputs: this.outputs,
+        timestamp: this.timestamp
+      };
+      return CryptoUtils.hash(data);
+    } catch (error) {
+      console.error('calculateHash error:', error.message);
+      console.error('Inputs:', this.inputs);
+      console.error('Outputs:', this.outputs);
+      throw error;
+    }
   }
 
   signInput(inputIndex, privateKey) {
