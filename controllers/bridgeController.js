@@ -1,6 +1,7 @@
 const { Connection, PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const Wallet = require('../models/Wallet');
 const BridgeTransaction = require('../models/BridgeTransaction');
+const BlockModel = require('../models/Block');
 const { Transaction } = require('../src/transaction');
 const logger = require('../utils/logger');
 
@@ -152,7 +153,24 @@ exports.verifyDeposit = async (req, res) => {
     req.blockchain.pendingTransactions.push(bridgeTx);
 
     // Mine a block to credit the tokens immediately
-    req.blockchain.minePendingTransactions(wallet.address);
+    const block = req.blockchain.minePendingTransactions(wallet.address);
+
+    // Save block to database
+    const blockDoc = new BlockModel({
+      index: block.index,
+      timestamp: block.timestamp,
+      transactions: block.transactions,
+      previousHash: block.previousHash,
+      hash: block.hash,
+      nonce: block.nonce,
+      difficulty: block.difficulty,
+      merkleRoot: block.merkleRoot,
+      miner: wallet.address,
+      reward: req.blockchain.miningReward,
+      totalFees: 0,
+      transactionCount: block.transactions.length
+    });
+    await blockDoc.save();
 
     // Update wallet balance
     wallet.balance += stratToCredit;
