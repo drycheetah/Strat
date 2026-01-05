@@ -5,7 +5,7 @@ const logger = require('../utils/logger');
 
 const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
 const BRIDGE_ADDRESS = process.env.BRIDGE_SOL_ADDRESS;
-const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 1000; // 1 SOL = 1000 STRAT
+const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 5; // 1 SOL = 1000 STRAT
 
 /**
  * Get bridge information
