@@ -27,21 +27,17 @@ const sendTransaction = async (req, res) => {
       });
     }
 
-    // Verify user password - need to fetch user with password field
-    const User = require('../models/User');
-    const user = await User.findById(req.user._id).select('+password');
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    // Decrypt private key - this will fail if password is wrong
+    let privateKey;
+    try {
+      privateKey = wallet.decryptPrivateKey(password);
+    } catch (error) {
+      logger.error(`Failed to decrypt private key: ${error.message}`);
       return res.status(401).json({
-        error: 'Invalid password'
+        error: 'Invalid password',
+        message: 'Could not decrypt wallet with provided password'
       });
     }
-
-    // Decrypt private key
-    const privateKey = wallet.decryptPrivateKey(password);
 
     // Get UTXOs for this wallet
     const utxos = blockchain.getUTXOsForAddress(wallet.address);
