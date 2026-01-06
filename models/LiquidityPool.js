@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
+const { Connection, PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 
 const liquidityPoolSchema = new mongoose.Schema({
-  // Pool reserves
+  // Pool reserves - BACKED BY REAL ASSETS
   solReserve: {
     type: Number,
     required: true,
@@ -10,12 +11,6 @@ const liquidityPoolSchema = new mongoose.Schema({
   stratReserve: {
     type: Number,
     required: true,
-    default: 0
-  },
-
-  // Liquidity provider tokens
-  totalLPTokens: {
-    type: Number,
     default: 0
   },
 
@@ -38,23 +33,68 @@ const liquidityPoolSchema = new mongoose.Schema({
   lastUpdated: {
     type: Date,
     default: Date.now
+  },
+
+  // Track last synced balance to detect real deposits
+  lastSyncedSOL: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
 });
 
-// Get current pool (singleton pattern)
-liquidityPoolSchema.statics.getPool = async function() {
-  let pool = await this.findOne();
-  if (!pool) {
-    // Initialize with starting liquidity
-    // 10 SOL : 100 STRAT (1 SOL = 10 STRAT starting price)
-    pool = await this.create({
-      solReserve: parseFloat(process.env.INITIAL_SOL_RESERVE) || 10,
-      stratReserve: parseFloat(process.env.INITIAL_STRAT_RESERVE) || 100,
-      totalLPTokens: 31.622776601683793 // sqrt(10 * 100)
-    });
+// Sync SOL reserve with actual Solana wallet balance
+liquidityPoolSchema.statics.syncSOLReserve = async function(blockchain) {
+  const BRIDGE_ADDRESS = process.env.BRIDGE_SOL_ADDRESS;
+
+  if (!BRIDGE_ADDRESS) {
+    throw new Error('Bridge address not configured');
   }
+
+  const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+  const bridgePubkey = new PublicKey(BRIDGE_ADDRESS);
+
+  // Get actual SOL balance from Solana blockchain
+  const balance = await connection.getBalance(bridgePubkey);
+  const solBalance = balance / LAMPORTS_PER_SOL;
+
+  // Calculate STRAT reserve from actual blockchain circulating supply
+  let stratCirculating = 0;
+  if (blockchain && blockchain.utxos) {
+    for (let [key, utxo] of blockchain.utxos) {
+      stratCirculating += utxo.amount;
+    }
+  }
+
+  return {
+    solReserve: solBalance,
+    stratReserve: stratCirculating
+  };
+};
+
+// Get current pool (singleton pattern) - SYNCED WITH REAL BALANCES
+liquidityPoolSchema.statics.getPool = async function(blockchain) {
+  let pool = await this.findOne();
+
+  if (!pool) {
+    // Initialize pool with REAL on-chain balances
+    const reserves = await this.syncSOLReserve(blockchain);
+
+    pool = await this.create({
+      solReserve: reserves.solReserve,
+      stratReserve: reserves.stratReserve,
+      lastSyncedSOL: reserves.solReserve
+    });
+  } else {
+    // Sync reserves with actual on-chain data on every call
+    const reserves = await this.syncSOLReserve(blockchain);
+    pool.solReserve = reserves.solReserve;
+    pool.stratReserve = reserves.stratReserve;
+    pool.lastSyncedSOL = reserves.solReserve;
+    await pool.save();
+  }
+
   return pool;
 };
 
@@ -126,62 +166,9 @@ liquidityPoolSchema.methods.swap = async function(amountIn, isSOLInput, minAmoun
   };
 };
 
-// Add liquidity
-liquidityPoolSchema.methods.addLiquidity = async function(solAmount, stratAmount) {
-  const currentRatio = this.solReserve / this.stratReserve;
-  const providedRatio = solAmount / stratAmount;
-
-  // Check if ratio matches (with 1% tolerance for first liquidity)
-  if (this.totalLPTokens > 0 && Math.abs(currentRatio - providedRatio) / currentRatio > 0.01) {
-    throw new Error('Liquidity must be added in current pool ratio');
-  }
-
-  // Calculate LP tokens to mint
-  let lpTokens;
-  if (this.totalLPTokens === 0) {
-    lpTokens = Math.sqrt(solAmount * stratAmount);
-  } else {
-    const lpFromSOL = (solAmount / this.solReserve) * this.totalLPTokens;
-    const lpFromSTRAT = (stratAmount / this.stratReserve) * this.totalLPTokens;
-    lpTokens = Math.min(lpFromSOL, lpFromSTRAT);
-  }
-
-  this.solReserve += solAmount;
-  this.stratReserve += stratAmount;
-  this.totalLPTokens += lpTokens;
-  this.lastUpdated = Date.now();
-
-  await this.save();
-
-  return {
-    lpTokens,
-    solAdded: solAmount,
-    stratAdded: stratAmount,
-    totalLPTokens: this.totalLPTokens
-  };
-};
-
-// Remove liquidity
-liquidityPoolSchema.methods.removeLiquidity = async function(lpTokens) {
-  if (lpTokens > this.totalLPTokens) {
-    throw new Error('Insufficient LP tokens');
-  }
-
-  const solAmount = (lpTokens / this.totalLPTokens) * this.solReserve;
-  const stratAmount = (lpTokens / this.totalLPTokens) * this.stratReserve;
-
-  this.solReserve -= solAmount;
-  this.stratReserve -= stratAmount;
-  this.totalLPTokens -= lpTokens;
-  this.lastUpdated = Date.now();
-
-  await this.save();
-
-  return {
-    solAmount,
-    stratAmount,
-    lpTokensBurned: lpTokens
-  };
-};
+// LIQUIDITY PROVIDER FUNCTIONS DISABLED
+// Pool is backed by real SOL deposits to bridge wallet
+// Only the bridge owner provides liquidity by depositing SOL to BRIDGE_ADDRESS
+// Users get STRAT by sending SOL, not by adding liquidity
 
 module.exports = mongoose.model('LiquidityPool', liquidityPoolSchema);

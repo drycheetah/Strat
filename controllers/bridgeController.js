@@ -20,8 +20,8 @@ exports.getBridgeInfo = async (req, res) => {
       return res.status(500).json({ error: 'Bridge not configured' });
     }
 
-    // Get current price from AMM pool
-    const pool = await LiquidityPool.getPool();
+    // Get current price from AMM pool - BACKED BY REAL SOL
+    const pool = await LiquidityPool.getPool(req.blockchain);
     const currentRate = pool.stratReserve / pool.solReserve; // STRAT per SOL
 
     res.json({
@@ -32,7 +32,7 @@ exports.getBridgeInfo = async (req, res) => {
       solReserve: pool.solReserve,
       stratReserve: pool.stratReserve,
       priceUSD: pool.getPriceUSD(),
-      disclaimer: `${BRIDGE_FEE_PERCENT}% liquidity pool fee applies. Price determined by AMM.`
+      disclaimer: `${BRIDGE_FEE_PERCENT}% pool fee. Reserves backed by real SOL at ${BRIDGE_ADDRESS}.`
     });
   } catch (error) {
     logger.error(`Error getting bridge info: ${error.message}`);
@@ -138,14 +138,14 @@ exports.verifyDeposit = async (req, res) => {
 
     const solReceived = lamportsReceived / LAMPORTS_PER_SOL;
 
-    // Get AMM pool and execute swap
-    const pool = await LiquidityPool.getPool();
+    // Get AMM pool - reserves synced with REAL on-chain balances
+    const pool = await LiquidityPool.getPool(req.blockchain);
 
     // Calculate expected output with slippage protection (2% slippage tolerance)
     const expectedSTRAT = pool.getAmountOut(solReceived, true);
     const minSTRAT = expectedSTRAT * 0.98; // 2% slippage tolerance
 
-    // Execute swap through AMM
+    // Execute swap through AMM (updates reserves)
     const swapResult = await pool.swap(solReceived, true, minSTRAT);
     const stratToCredit = swapResult.amountOut;
 

@@ -7,8 +7,8 @@ const logger = require('../utils/logger');
  */
 const getCurrentPrice = async (req, res) => {
   try {
-    // Get real-time price from AMM pool
-    const pool = await LiquidityPool.getPool();
+    // Get real-time price from AMM pool - SYNCED WITH REAL BALANCES
+    const pool = await LiquidityPool.getPool(req.blockchain);
     const currentPriceUSD = pool.getPriceUSD();
 
     const price = await Price.getCurrent();
