@@ -84,12 +84,12 @@ exports.getMiningWork = async (req, res) => {
  */
 exports.submitBlock = async (req, res) => {
   try {
-    const { minerAddress, nonce, hash } = req.body;
+    const { minerAddress, nonce, hash, block: minedBlock } = req.body;
 
-    if (!minerAddress || !nonce || !hash) {
+    if (!minerAddress || nonce === undefined || !hash) {
       return res.status(400).json({
         error: 'Missing required fields',
-        message: 'Please provide minerAddress, nonce, and hash'
+        message: 'Please provide minerAddress, nonce, hash, and block'
       });
     }
 
@@ -101,6 +101,20 @@ exports.submitBlock = async (req, res) => {
       return res.status(400).json({
         error: 'Invalid proof of work',
         message: `Hash must start with ${blockchain.difficulty} zeros`
+      });
+    }
+
+    // Verify hash calculation
+    const dataToHash = minedBlock.index + minedBlock.timestamp +
+                      JSON.stringify(minedBlock.transactions) +
+                      minedBlock.previousHash + nonce +
+                      minedBlock.difficulty + minedBlock.merkleRoot;
+    const calculatedHash = crypto.createHash('sha256').update(dataToHash).digest('hex');
+
+    if (calculatedHash !== hash) {
+      return res.status(400).json({
+        error: 'Invalid hash',
+        message: 'Hash does not match block data'
       });
     }
 
@@ -117,26 +131,26 @@ exports.submitBlock = async (req, res) => {
       await wallet.save();
     }
 
-    // Create coinbase transaction for mining reward
-    const coinbaseTx = Transaction.createCoinbaseTx(
-      minerAddress,
-      blockchain.chain.length,
-      blockchain.miningReward
-    );
+    // Create the block object
+    const block = {
+      index: minedBlock.index,
+      timestamp: minedBlock.timestamp,
+      transactions: minedBlock.transactions || [],
+      previousHash: minedBlock.previousHash,
+      hash: hash,
+      nonce: nonce,
+      difficulty: minedBlock.difficulty,
+      merkleRoot: minedBlock.merkleRoot
+    };
 
-    // Add coinbase transaction to pending
-    blockchain.pendingTransactions.unshift(coinbaseTx);
+    // Add block to blockchain
+    blockchain.chain.push(block);
 
-    // Mine the block with the provided nonce
-    const block = blockchain.minePendingTransactions(minerAddress, nonce);
+    // Update UTXOs
+    blockchain.updateUTXOs(block);
 
-    // Verify the submitted hash matches
-    if (block.hash !== hash) {
-      return res.status(400).json({
-        error: 'Hash mismatch',
-        message: 'The submitted hash does not match the calculated hash'
-      });
-    }
+    // Clear pending transactions that were included
+    blockchain.pendingTransactions = [];
 
     // Save block to database
     const blockDoc = new BlockModel({

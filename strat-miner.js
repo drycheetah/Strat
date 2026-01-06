@@ -219,19 +219,30 @@ async function submitBlock(block, nonce, hash) {
       body: {
         minerAddress: WALLET_ADDRESS,
         nonce,
-        hash
+        hash,
+        block: {
+          index: block.index,
+          timestamp: block.timestamp,
+          transactions: block.transactions,
+          previousHash: block.previousHash,
+          difficulty: block.difficulty,
+          merkleRoot: block.merkleRoot,
+          miner: block.miner
+        }
       }
     });
 
-    if (result.success) {
+    if (result && result.success) {
       console.log(`\n✅ BLOCK FOUND! #${stats.currentBlock + 1}`);
       console.log(`   Hash: ${hash.substring(0, 16)}...`);
-      console.log(`   Reward: ${result.reward || 50} STRAT`);
-      stats.totalEarnings += (result.reward || 50);
+      console.log(`   Reward: ${result.reward || 1} STRAT`);
+      stats.totalEarnings += (result.reward || 1);
       stats.currentBlock++;
+    } else if (result && result.error) {
+      console.log(`\n⚠️  Block rejected: ${result.message || result.error}`);
     }
   } catch (error) {
-    console.log(`\n❌ Failed to submit block: ${error.message}`);
+    console.log(`\n❌ Failed to submit block: ${error.message || 'Unknown error'}`);
   }
 }
 
