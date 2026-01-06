@@ -86,7 +86,7 @@ let stats = {
   totalEarnings: 0,
   startTime: Date.now(),
   lastBlockTime: null,
-  difficulty: 2,
+  difficulty: 4,
   currentBlock: 0
 };
 
@@ -153,8 +153,8 @@ function makeRequest(url, options = {}) {
 async function getBlockchainStats() {
   try {
     const data = await makeRequest(`${API_URL}/api/blockchain/stats`);
-    if (data.stats) {
-      stats.difficulty = data.stats.difficulty || 2;
+    if (data && data.stats) {
+      stats.difficulty = data.stats.difficulty || 4;
       stats.currentBlock = data.stats.blockHeight || 0;
     }
   } catch (error) {
@@ -240,12 +240,20 @@ async function getMiningWork() {
   try {
     const data = await makeRequest(`${API_URL}/api/mining/work?address=${WALLET_ADDRESS}`);
 
-    if (data.block) {
-      currentMiningBlock = data.block;
-      stats.difficulty = data.block.difficulty || 2;
+    if (data && data.block) {
+      currentMiningBlock = {
+        index: data.block.index || 0,
+        timestamp: data.block.timestamp || Date.now(),
+        transactions: data.block.transactions || [],
+        previousHash: data.block.previousHash || '0',
+        difficulty: data.block.difficulty || 4,
+        merkleRoot: data.block.merkleRoot || '',
+        miner: data.block.miner || WALLET_ADDRESS
+      };
+      stats.difficulty = currentMiningBlock.difficulty;
     }
   } catch (error) {
-    console.log(`\n⚠️  Failed to get mining work: ${error.message}`);
+    // Silently handle errors - will retry on next poll
   }
 }
 

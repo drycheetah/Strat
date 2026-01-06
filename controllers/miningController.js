@@ -2,6 +2,31 @@ const Wallet = require('../models/Wallet');
 const BlockModel = require('../models/Block');
 const { Transaction } = require('../src/transaction');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
+
+// Helper function to calculate merkle root
+function calculateMerkleRoot(transactions) {
+  if (transactions.length === 0) return '';
+
+  let hashes = transactions.map(tx =>
+    tx.hash || crypto.createHash('sha256').update(JSON.stringify(tx)).digest('hex')
+  );
+
+  while (hashes.length > 1) {
+    if (hashes.length % 2 !== 0) {
+      hashes.push(hashes[hashes.length - 1]);
+    }
+
+    const newHashes = [];
+    for (let i = 0; i < hashes.length; i += 2) {
+      const combined = hashes[i] + hashes[i + 1];
+      newHashes.push(crypto.createHash('sha256').update(combined).digest('hex'));
+    }
+    hashes = newHashes;
+  }
+
+  return hashes[0];
+}
 
 /**
  * Get mining work for standalone miners
@@ -22,14 +47,17 @@ exports.getMiningWork = async (req, res) => {
     // Get the latest block
     const latestBlock = blockchain.chain[blockchain.chain.length - 1];
 
+    // Get pending transactions
+    const pendingTxs = blockchain.pendingTransactions.slice(0, 10);
+
     // Prepare mining work
     const block = {
       index: blockchain.chain.length,
       timestamp: Date.now(),
-      transactions: blockchain.pendingTransactions.slice(0, 10), // Include up to 10 pending transactions
+      transactions: pendingTxs,
       previousHash: latestBlock.hash,
       difficulty: blockchain.difficulty,
-      merkleRoot: blockchain.calculateMerkleRoot(blockchain.pendingTransactions.slice(0, 10)),
+      merkleRoot: calculateMerkleRoot(pendingTxs),
       miner: address
     };
 
