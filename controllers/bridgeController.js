@@ -199,26 +199,46 @@ exports.verifyDeposit = async (req, res) => {
     // Mine a block to credit the tokens immediately
     const block = req.blockchain.minePendingTransactions(wallet.address);
 
-    // Save block to database
-    const blockDoc = new BlockModel({
-      index: block.index,
-      timestamp: block.timestamp,
-      transactions: block.transactions,
-      previousHash: block.previousHash,
-      hash: block.hash,
-      nonce: block.nonce,
-      difficulty: block.difficulty,
-      merkleRoot: block.merkleRoot,
-      miner: wallet.address,
-      reward: req.blockchain.miningReward,
-      totalFees: 0,
-      transactionCount: block.transactions.length
-    });
-    await blockDoc.save();
+    // Save block to database with race condition protection
+    try {
+      // Check if block already exists
+      const existingBlock = await BlockModel.findOne({ index: block.index });
+      if (existingBlock) {
+        // Another miner beat us - but tokens are still in pending, so just credit wallet directly
+        logger.warn(`Block #${block.index} already mined, crediting wallet directly`);
+        wallet.balance += stratToCredit;
+        await wallet.save();
+      } else {
+        const blockDoc = new BlockModel({
+          index: block.index,
+          timestamp: block.timestamp,
+          transactions: block.transactions,
+          previousHash: block.previousHash,
+          hash: block.hash,
+          nonce: block.nonce,
+          difficulty: block.difficulty,
+          merkleRoot: block.merkleRoot,
+          miner: wallet.address,
+          reward: req.blockchain.miningReward,
+          totalFees: 0,
+          transactionCount: block.transactions.length
+        });
+        await blockDoc.save();
 
-    // Update wallet balance
-    wallet.balance += stratToCredit;
-    await wallet.save();
+        // Update wallet balance
+        wallet.balance += stratToCredit;
+        await wallet.save();
+      }
+    } catch (dbError) {
+      // If duplicate key error, credit wallet directly
+      if (dbError.code === 11000) {
+        logger.warn(`Block #${block.index} duplicate, crediting wallet directly`);
+        wallet.balance += stratToCredit;
+        await wallet.save();
+      } else {
+        throw dbError;
+      }
+    }
 
     // Record the bridge transaction
     const bridgeRecord = new BridgeTransaction({
