@@ -28,6 +28,14 @@
         .nav-item { padding: 12px 20px; margin: 4px 10px; border-radius: 12px; cursor: pointer; transition: all 0.3s; }
         .nav-item:hover { background: rgba(255, 255, 255, 0.05); }
         .nav-item.active { background: linear-gradient(135deg, rgba(20, 241, 149, 0.1) 0%, rgba(153, 69, 255, 0.1) 100%); border-left: 3px solid #14f195; }
+        .toast { position: fixed; top: 20px; right: 20px; min-width: 300px; padding: 16px 20px; background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); z-index: 9999; transform: translateX(400px); transition: all 0.3s ease-in-out; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .toast.show { transform: translateX(0); }
+        .toast.success { border-left: 4px solid #14f195; }
+        .toast.error { border-left: 4px solid #ef4444; }
+        .toast.info { border-left: 4px solid #3b82f6; }
+        .toast.warning { border-left: 4px solid #f59e0b; }
+        @keyframes slideInRight { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
     </style>
 </head>
 <body>
@@ -68,6 +76,18 @@
                 </div>
                 <div class="nav-item" onclick="showSection('mempool')">
                     <i class="fas fa-layer-group mr-3"></i> Mempool
+                </div>
+                <div class="nav-item" onclick="showSection('analytics')">
+                    <i class="fas fa-chart-bar mr-3"></i> Analytics
+                </div>
+                <div class="nav-item" onclick="showSection('portfolio')">
+                    <i class="fas fa-briefcase mr-3"></i> Portfolio
+                </div>
+                <div class="nav-item" onclick="showSection('leaderboard')">
+                    <i class="fas fa-trophy mr-3"></i> Leaderboard
+                </div>
+                <div class="nav-item" onclick="showSection('history')">
+                    <i class="fas fa-history mr-3"></i> History
                 </div>
             </nav>
         </div>
@@ -604,6 +624,186 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Analytics Section -->
+            <div id="section-analytics" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Blockchain Analytics</h2>
+
+                    <!-- Key Metrics -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Network Hashrate</div>
+                            <div class="text-2xl font-bold text-green-400" id="analytics-hashrate">-</div>
+                            <div class="text-xs text-gray-500 mt-1">H/s</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Avg Block Time</div>
+                            <div class="text-2xl font-bold text-blue-400" id="analytics-blocktime">-</div>
+                            <div class="text-xs text-gray-500 mt-1">seconds</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">24h Transactions</div>
+                            <div class="text-2xl font-bold text-purple-400" id="analytics-txs">-</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Value Locked</div>
+                            <div class="text-2xl font-bold text-yellow-400" id="analytics-tvl">-</div>
+                            <div class="text-xs text-gray-500 mt-1">STRAT</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 1 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">Difficulty Chart (30 Days)</h3>
+                            <canvas id="difficulty-chart" height="200"></canvas>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">Transactions per Day</h3>
+                            <canvas id="transactions-chart" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 2 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">STRAT/SOL Price</h3>
+                            <canvas id="price-chart" height="200"></canvas>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">Network Distribution</h3>
+                            <canvas id="distribution-chart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portfolio Section -->
+            <div id="section-portfolio" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Your Portfolio</h2>
+
+                    <!-- Portfolio Summary -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Balance</div>
+                            <div class="text-3xl font-bold text-green-400" id="portfolio-balance">0 STRAT</div>
+                            <div class="text-xs text-green-400 mt-1" id="portfolio-usd">$0.00</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Staked</div>
+                            <div class="text-3xl font-bold text-purple-400" id="portfolio-staked">0 STRAT</div>
+                            <div class="text-xs text-gray-500 mt-1">Earning rewards</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Earned</div>
+                            <div class="text-3xl font-bold text-blue-400" id="portfolio-earned">0 STRAT</div>
+                            <div class="text-xs text-gray-500 mt-1">Mining + Staking</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Portfolio Value</div>
+                            <div class="text-3xl font-bold text-yellow-400" id="portfolio-value">$0.00</div>
+                            <div class="text-xs mt-1" id="portfolio-change">+0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Asset Breakdown -->
+                    <div class="glass p-6 rounded-xl mb-6">
+                        <h3 class="text-xl font-bold mb-4">Asset Breakdown</h3>
+                        <div class="space-y-4" id="portfolio-assets"></div>
+                    </div>
+
+                    <!-- Activity Chart -->
+                    <div class="glass p-6 rounded-xl">
+                        <h3 class="text-xl font-bold mb-4">Balance History</h3>
+                        <canvas id="balance-history-chart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Section -->
+            <div id="section-leaderboard" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Leaderboards</h2>
+
+                    <div class="flex gap-4 mb-6">
+                        <button onclick="switchLeaderboard('miners')" id="lb-miners-btn" class="btn-primary px-6 py-3 rounded-xl">
+                            <i class="fas fa-cube mr-2"></i> Top Miners
+                        </button>
+                        <button onclick="switchLeaderboard('stakers')" id="lb-stakers-btn" class="btn-secondary px-6 py-3 rounded-xl">
+                            <i class="fas fa-coins mr-2"></i> Top Stakers
+                        </button>
+                        <button onclick="switchLeaderboard('holders')" id="lb-holders-btn" class="btn-secondary px-6 py-3 rounded-xl">
+                            <i class="fas fa-wallet mr-2"></i> Top Holders
+                        </button>
+                    </div>
+
+                    <!-- Top Miners -->
+                    <div id="leaderboard-miners" class="glass p-6 rounded-xl">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                            <i class="fas fa-trophy text-yellow-400"></i> Top Miners (Last 30 Days)
+                        </h3>
+                        <div id="miners-list" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Top Stakers -->
+                    <div id="leaderboard-stakers" class="glass p-6 rounded-xl hidden">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                            <i class="fas fa-trophy text-yellow-400"></i> Top Stakers
+                        </h3>
+                        <div id="stakers-list" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Top Holders -->
+                    <div id="leaderboard-holders" class="glass p-6 rounded-xl hidden">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                            <i class="fas fa-trophy text-yellow-400"></i> Top Holders
+                        </h3>
+                        <div id="holders-list" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction History Section -->
+            <div id="section-history" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Transaction History</h2>
+
+                    <!-- Filters -->
+                    <div class="flex gap-4 mb-6 flex-wrap">
+                        <select id="history-filter" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white">
+                            <option value="all">All Transactions</option>
+                            <option value="sent">Sent</option>
+                            <option value="received">Received</option>
+                            <option value="mining">Mining Rewards</option>
+                            <option value="staking">Staking Rewards</option>
+                        </select>
+                        <input id="history-search" type="text" placeholder="Search by hash or address..." class="px-4 py-2 rounded-xl flex-1">
+                        <button onclick="loadHistory()" class="btn-primary px-6 py-2 rounded-xl">
+                            <i class="fas fa-search mr-2"></i> Search
+                        </button>
+                    </div>
+
+                    <!-- Transaction List -->
+                    <div id="history-list" class="space-y-3">
+                        <div class="text-center text-gray-400 py-8">Loading transactions...</div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="flex justify-center gap-2 mt-6" id="history-pagination">
+                        <button onclick="loadHistory(historyPage-1)" class="btn-secondary px-4 py-2 rounded-lg">Previous</button>
+                        <span class="px-4 py-2 text-gray-400">Page <span id="history-page-num">1</span></span>
+                        <button onclick="loadHistory(historyPage+1)" class="btn-secondary px-4 py-2 rounded-lg">Next</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -629,6 +829,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
 
     <script>
         const API = window.location.hostname === 'localhost'
@@ -1567,11 +1770,513 @@
                 loadUserStakes();
             } else if (name === 'mempool') {
                 loadMempoolInfo();
+            } else if (name === 'analytics') {
+                loadAnalytics();
+            } else if (name === 'portfolio') {
+                loadPortfolio();
+            } else if (name === 'leaderboard') {
+                loadLeaderboards();
+            } else if (name === 'history') {
+                loadHistory();
+            }
+        };
+
+        // Analytics Functions
+        let charts = {};
+
+        async function loadAnalytics() {
+            try {
+                const res = await fetch(`${API}/explorer/stats`);
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('analytics-hashrate').textContent = data.stats.hashrate.toFixed(2);
+                    document.getElementById('analytics-blocktime').textContent = data.stats.avgBlockTime.toFixed(1);
+                    document.getElementById('analytics-txs').textContent = data.stats.transactions24h || 0;
+                    document.getElementById('analytics-tvl').textContent = (data.stats.totalStaked || 0).toFixed(2);
+                }
+
+                // Load chart data
+                await loadCharts();
+            } catch(e) {
+                console.error('Failed to load analytics:', e);
+            }
+        }
+
+        async function loadCharts() {
+            try {
+                // Difficulty Chart
+                const diffRes = await fetch(`${API}/explorer/charts/difficulty?days=30`);
+                const diffData = await diffRes.json();
+
+                if (diffData.success && charts.difficultyChart) {
+                    charts.difficultyChart.destroy();
+                }
+
+                const diffCtx = document.getElementById('difficulty-chart');
+                charts.difficultyChart = new Chart(diffCtx, {
+                    type: 'line',
+                    data: {
+                        labels: diffData.data?.map(d => new Date(d.date).toLocaleDateString()) || [],
+                        datasets: [{
+                            label: 'Difficulty',
+                            data: diffData.data?.map(d => d.value) || [],
+                            borderColor: '#14f195',
+                            backgroundColor: 'rgba(20, 241, 149, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } },
+                        scales: {
+                            x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        }
+                    }
+                });
+
+                // Transactions Chart
+                const txRes = await fetch(`${API}/explorer/charts/transactions?days=30`);
+                const txData = await txRes.json();
+
+                if (charts.transactionsChart) charts.transactionsChart.destroy();
+
+                const txCtx = document.getElementById('transactions-chart');
+                charts.transactionsChart = new Chart(txCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: txData.data?.map(d => new Date(d.date).toLocaleDateString()) || [],
+                        datasets: [{
+                            label: 'Transactions',
+                            data: txData.data?.map(d => d.value) || [],
+                            backgroundColor: '#9945ff',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } },
+                        scales: {
+                            x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        }
+                    }
+                });
+
+                // Price Chart - Mock data for now
+                if (charts.priceChart) charts.priceChart.destroy();
+                const priceCtx = document.getElementById('price-chart');
+                charts.priceChart = new Chart(priceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 30}, (_, i) => `Day ${i+1}`),
+                        datasets: [{
+                            label: 'STRAT/SOL',
+                            data: Array.from({length: 30}, () => 0.1 + Math.random() * 0.05),
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } },
+                        scales: {
+                            x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        }
+                    }
+                });
+
+                // Distribution Chart
+                const richRes = await fetch(`${API}/explorer/richlist?limit=5`);
+                const richData = await richRes.json();
+
+                if (charts.distributionChart) charts.distributionChart.destroy();
+                const distCtx = document.getElementById('distribution-chart');
+                charts.distributionChart = new Chart(distCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: richData.richList?.map((a, i) => `#${i+1} ${a.address.substring(0, 8)}...`) || ['No data'],
+                        datasets: [{
+                            data: richData.richList?.map(a => a.balance) || [1],
+                            backgroundColor: ['#14f195', '#9945ff', '#f59e0b', '#3b82f6', '#ef4444']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } }
+                    }
+                });
+
+            } catch(e) {
+                console.error('Failed to load charts:', e);
+            }
+        }
+
+        // Portfolio Functions
+        async function loadPortfolio() {
+            if (!walletData) return;
+
+            try {
+                const res = await fetch(`${API}/explorer/address/${walletData.address}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const balance = data.address.balance || 0;
+                    const staked = data.address.stakedBalance || 0;
+                    const usdValue = balance * 0.01; // Mock price
+
+                    document.getElementById('portfolio-balance').textContent = balance.toFixed(2) + ' STRAT';
+                    document.getElementById('portfolio-usd').textContent = '$' + usdValue.toFixed(2);
+                    document.getElementById('portfolio-staked').textContent = staked.toFixed(2) + ' STRAT';
+                    document.getElementById('portfolio-value').textContent = '$' + (usdValue + staked * 0.01).toFixed(2);
+
+                    // Asset breakdown
+                    const assets = [
+                        { name: 'Liquid STRAT', amount: balance, percent: (balance / (balance + staked) * 100) || 0 },
+                        { name: 'Staked STRAT', amount: staked, percent: (staked / (balance + staked) * 100) || 0 }
+                    ];
+
+                    const assetsHtml = assets.map(asset => `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold">${asset.name}</span>
+                                <span class="text-green-400">${asset.amount.toFixed(2)} STRAT</span>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-2">
+                                <div class="bg-gradient-primary h-2 rounded-full" style="width: ${asset.percent}%"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('portfolio-assets').innerHTML = assetsHtml;
+
+                    // Balance history chart
+                    if (charts.balanceHistory) charts.balanceHistory.destroy();
+                    const balCtx = document.getElementById('balance-history-chart');
+                    charts.balanceHistory = new Chart(balCtx, {
+                        type: 'line',
+                        data: {
+                            labels: Array.from({length: 30}, (_, i) => `Day ${i+1}`),
+                            datasets: [{
+                                label: 'Balance',
+                                data: Array.from({length: 30}, (_, i) => balance * (0.8 + i * 0.01)),
+                                borderColor: '#14f195',
+                                backgroundColor: 'rgba(20, 241, 149, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { labels: { color: '#fff' } } },
+                            scales: {
+                                x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                                y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                            }
+                        }
+                    });
+                }
+            } catch(e) {
+                console.error('Failed to load portfolio:', e);
+            }
+        }
+
+        // Leaderboard Functions
+        let currentLeaderboard = 'miners';
+
+        function switchLeaderboard(type) {
+            currentLeaderboard = type;
+
+            // Update button styles
+            document.getElementById('lb-miners-btn').className = type === 'miners' ? 'btn-primary px-6 py-3 rounded-xl' : 'btn-secondary px-6 py-3 rounded-xl';
+            document.getElementById('lb-stakers-btn').className = type === 'stakers' ? 'btn-primary px-6 py-3 rounded-xl' : 'btn-secondary px-6 py-3 rounded-xl';
+            document.getElementById('lb-holders-btn').className = type === 'holders' ? 'btn-primary px-6 py-3 rounded-xl' : 'btn-secondary px-6 py-3 rounded-xl';
+
+            // Show/hide sections
+            document.getElementById('leaderboard-miners').className = type === 'miners' ? 'glass p-6 rounded-xl' : 'glass p-6 rounded-xl hidden';
+            document.getElementById('leaderboard-stakers').className = type === 'stakers' ? 'glass p-6 rounded-xl' : 'glass p-6 rounded-xl hidden';
+            document.getElementById('leaderboard-holders').className = type === 'holders' ? 'glass p-6 rounded-xl' : 'glass p-6 rounded-xl hidden';
+
+            loadLeaderboards();
+        }
+
+        async function loadLeaderboards() {
+            try {
+                if (currentLeaderboard === 'miners') {
+                    const res = await fetch(`${API}/explorer/mining?days=30`);
+                    const data = await res.json();
+
+                    if (data.success && data.topMiners) {
+                        const html = data.topMiners.map((miner, idx) => `
+                            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
+                                <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
+                                <div class="flex-1">
+                                    <div class="font-mono text-sm">${miner.address.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-400">${miner.blocks} blocks mined</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-green-400">${miner.rewards.toFixed(2)} STRAT</div>
+                                    <div class="text-xs text-gray-500">Rewards</div>
+                                </div>
+                            </div>
+                        `).join('');
+                        document.getElementById('miners-list').innerHTML = html;
+                    }
+                } else if (currentLeaderboard === 'stakers') {
+                    const res = await fetch(`${API}/staking/stats`);
+                    const data = await res.json();
+
+                    // Mock data for now
+                    const mockStakers = Array.from({length: 10}, (_, i) => ({
+                        address: 'STRAT' + Math.random().toString(36).substring(2, 15),
+                        staked: (1000 - i * 50) + Math.random() * 100,
+                        rewards: (50 - i * 3) + Math.random() * 10
+                    }));
+
+                    const html = mockStakers.map((staker, idx) => `
+                        <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
+                            <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
+                            <div class="flex-1">
+                                <div class="font-mono text-sm">${staker.address.substring(0, 16)}...</div>
+                                <div class="text-xs text-gray-400">${staker.staked.toFixed(2)} STRAT staked</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-lg font-bold text-purple-400">${staker.rewards.toFixed(2)} STRAT</div>
+                                <div class="text-xs text-gray-500">Rewards</div>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('stakers-list').innerHTML = html;
+                } else if (currentLeaderboard === 'holders') {
+                    const res = await fetch(`${API}/explorer/richlist?limit=10`);
+                    const data = await res.json();
+
+                    if (data.success && data.richList) {
+                        const html = data.richList.map((holder, idx) => `
+                            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
+                                <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
+                                <div class="flex-1">
+                                    <div class="font-mono text-sm">${holder.address.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-400">${((holder.balance / data.totalSupply) * 100).toFixed(2)}% of supply</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-green-400">${holder.balance.toFixed(2)} STRAT</div>
+                                    <div class="text-xs text-gray-500">${(holder.balance * 0.01).toFixed(2)} USD</div>
+                                </div>
+                            </div>
+                        `).join('');
+                        document.getElementById('holders-list').innerHTML = html;
+                    }
+                }
+            } catch(e) {
+                console.error('Failed to load leaderboards:', e);
+            }
+        }
+
+        // Transaction History Functions
+        let historyPage = 1;
+
+        async function loadHistory(page = 1) {
+            if (!walletData) return;
+            historyPage = page;
+
+            try {
+                const filter = document.getElementById('history-filter').value;
+                const search = document.getElementById('history-search').value;
+
+                const res = await fetch(`${API}/explorer/address/${walletData.address}`);
+                const data = await res.json();
+
+                if (data.success && data.address.transactions) {
+                    let txs = data.address.transactions;
+
+                    // Apply filter
+                    if (filter !== 'all') {
+                        txs = txs.filter(tx => {
+                            if (filter === 'sent') return tx.from === walletData.address;
+                            if (filter === 'received') return tx.to === walletData.address;
+                            if (filter === 'mining') return tx.from === 'MINING_REWARD';
+                            if (filter === 'staking') return tx.from === 'STAKING_REWARD';
+                            return true;
+                        });
+                    }
+
+                    // Apply search
+                    if (search) {
+                        txs = txs.filter(tx =>
+                            tx.hash.includes(search) || tx.from.includes(search) || tx.to.includes(search)
+                        );
+                    }
+
+                    // Pagination
+                    const perPage = 20;
+                    const start = (page - 1) * perPage;
+                    const paginatedTxs = txs.slice(start, start + perPage);
+
+                    if (paginatedTxs.length === 0) {
+                        document.getElementById('history-list').innerHTML = '<div class="text-center text-gray-400 py-8">No transactions found</div>';
+                    } else {
+                        const html = paginatedTxs.map(tx => {
+                            const isSent = tx.from === walletData.address;
+                            const isMining = tx.from === 'MINING_REWARD';
+                            const isStaking = tx.from === 'STAKING_REWARD';
+
+                            return `
+                                <div class="bg-white/5 p-4 rounded-xl">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <i class="fas fa-${isMining ? 'cube' : isStaking ? 'coins' : isSent ? 'arrow-up' : 'arrow-down'} ${isMining ? 'text-blue-400' : isStaking ? 'text-purple-400' : isSent ? 'text-red-400' : 'text-green-400'}"></i>
+                                                <span class="font-bold">${isMining ? 'Mining Reward' : isStaking ? 'Staking Reward' : isSent ? 'Sent' : 'Received'}</span>
+                                            </div>
+                                            <div class="font-mono text-xs text-gray-400">Hash: ${tx.hash.substring(0, 32)}...</div>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                ${isMining || isStaking ? 'Block #' + tx.blockIndex : isSent ? 'To: ' + tx.to.substring(0, 16) + '...' : 'From: ' + tx.from.substring(0, 16) + '...'}
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-lg font-bold ${isSent ? 'text-red-400' : 'text-green-400'}">
+                                                ${isSent && !isMining && !isStaking ? '-' : '+'}${tx.amount.toFixed(4)} STRAT
+                                            </div>
+                                            <div class="text-xs text-gray-500">${new Date(tx.timestamp).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        document.getElementById('history-list').innerHTML = html;
+                    }
+
+                    document.getElementById('history-page-num').textContent = page;
+                }
+            } catch(e) {
+                console.error('Failed to load history:', e);
+                document.getElementById('history-list').innerHTML = '<div class="text-center text-red-400 py-8">Failed to load transactions</div>';
+            }
+        }
+
+        // Notification System
+        function showNotification(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+
+            const colors = {
+                success: '#14f195',
+                error: '#ef4444',
+                warning: '#f59e0b',
+                info: '#3b82f6'
+            };
+
+            toast.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fas ${icons[type]} text-xl" style="color: ${colors[type]}"></i>
+                    <div class="flex-1">
+                        <div class="font-semibold">${message}</div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // WebSocket connection for real-time notifications
+        let socket = null;
+
+        function connectWebSocket() {
+            try {
+                socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/');
+
+                socket.on('connect', () => {
+                    console.log('WebSocket connected');
+
+                    if (walletData) {
+                        socket.emit('subscribe_address', walletData.address);
+                        socket.emit('subscribe_blocks');
+                        socket.emit('subscribe_mempool');
+                    }
+                });
+
+                socket.on('new_block', (data) => {
+                    showNotification(`New block #${data.index} mined by ${data.miner.substring(0, 16)}...`, 'info', 4000);
+                    loadDashboard();
+                });
+
+                socket.on('address_balance', (data) => {
+                    if (data.address === walletData?.address) {
+                        const changeText = data.change >= 0 ? `+${data.change.toFixed(4)}` : data.change.toFixed(4);
+                        showNotification(`Balance updated: ${changeText} STRAT`, 'success', 5000);
+                        loadDashboard();
+                    }
+                });
+
+                socket.on('stake_created', (data) => {
+                    if (data.address === walletData?.address) {
+                        showNotification(`Stake created: ${data.amount} STRAT at ${data.apy}% APY`, 'success', 6000);
+                    }
+                });
+
+                socket.on('rewards_claimed', (data) => {
+                    if (data.address === walletData?.address) {
+                        showNotification(`Rewards claimed: +${data.rewards.toFixed(4)} STRAT`, 'success', 6000);
+                    }
+                });
+
+                socket.on('stake_unlocked', (data) => {
+                    if (data.address === walletData?.address) {
+                        showNotification(`Stake unlocked! You can now withdraw ${data.amount} STRAT + rewards`, 'info', 6000);
+                    }
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('WebSocket disconnected');
+                    setTimeout(connectWebSocket, 5000); // Reconnect after 5 seconds
+                });
+
+            } catch(e) {
+                console.error('WebSocket connection failed:', e);
+            }
+        }
+
+        // Replace alert calls with notifications
+        const originalAlert = window.alert;
+        window.alert = function(message) {
+            if (message.startsWith('✓')) {
+                showNotification(message.replace('✓ ', ''), 'success');
+            } else if (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed')) {
+                showNotification(message, 'error');
+            } else {
+                showNotification(message, 'info');
             }
         };
 
         // Load staking info on startup
         loadStakingInfo();
+
+        // Connect WebSocket after login
+        if (token && walletData) {
+            connectWebSocket();
+        }
 
         setInterval(loadDashboard, 10000);
     </script>
