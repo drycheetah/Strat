@@ -90,7 +90,12 @@
             <!-- Overview Section -->
             <div id="section-overview">
                 <!-- Stats Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">STRAT Price</div>
+                        <div class="text-2xl font-bold text-green-400" id="stat-price">$0.00</div>
+                        <div class="text-xs mt-1" id="stat-price-change">-</div>
+                    </div>
                     <div class="glass p-6 rounded-2xl">
                         <div class="text-sm text-gray-400 mb-2">Block Height</div>
                         <div class="text-3xl font-bold text-gradient" id="stat-height">0</div>
@@ -104,8 +109,8 @@
                         <div class="text-3xl font-bold text-gradient" id="stat-pending">0</div>
                     </div>
                     <div class="glass p-6 rounded-2xl">
-                        <div class="text-sm text-gray-400 mb-2">Hash Rate</div>
-                        <div class="text-3xl font-bold text-gradient" id="stat-hash">0 H/s</div>
+                        <div class="text-sm text-gray-400 mb-2">Market Cap</div>
+                        <div class="text-2xl font-bold text-gradient" id="stat-mcap">$0</div>
                     </div>
                 </div>
 
@@ -404,8 +409,10 @@
                     document.getElementById('stat-height').textContent = stats.stats.blockHeight;
                     document.getElementById('stat-diff').textContent = stats.stats.difficulty;
                     document.getElementById('stat-pending').textContent = stats.stats.pendingTransactions;
-                    document.getElementById('stat-hash').textContent = stats.stats.hashRate + ' H/s';
                 }
+
+                // Load price data
+                loadPriceData();
 
                 // Update wallet
                 if (wallets.wallets && wallets.wallets[0]) {
@@ -423,6 +430,36 @@
                     token = null;
                     document.getElementById('loginModal').classList.add('active');
                 }
+            }
+        }
+
+        async function loadPriceData() {
+            try {
+                const res = await fetch(`${API}/price/current`);
+                const data = await res.json();
+
+                if (data.success && data.price) {
+                    const p = data.price;
+
+                    // Update price
+                    document.getElementById('stat-price').textContent = '$' + p.usd.toFixed(4);
+
+                    // Update price change
+                    const changeEl = document.getElementById('stat-price-change');
+                    const changePercent = p.priceChangePercent24h || 0;
+                    const changeColor = changePercent >= 0 ? 'text-green-400' : 'text-red-400';
+                    const changeSymbol = changePercent >= 0 ? '+' : '';
+                    changeEl.className = `text-xs mt-1 ${changeColor}`;
+                    changeEl.textContent = `${changeSymbol}${changePercent.toFixed(2)}% 24h`;
+
+                    // Update market cap
+                    const mcap = p.marketCap || 0;
+                    document.getElementById('stat-mcap').textContent = '$' + (mcap >= 1000000 ?
+                        (mcap / 1000000).toFixed(2) + 'M' :
+                        mcap.toFixed(0));
+                }
+            } catch(e) {
+                console.error('Failed to load price:', e);
             }
         }
 

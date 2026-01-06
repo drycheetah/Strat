@@ -32,17 +32,66 @@
         <div class="container mx-auto px-6">
             <div class="grid md:grid-cols-2 gap-12 items-center">
                 <div class="space-y-8">
-                    <h1 class="text-6xl md:text-7xl font-bold">The Future of <span class="text-gradient">Blockchain</span></h1>
-                    <p class="text-xl text-gray-400">Fast, secure, scalable blockchain with smart contracts. Built for the next generation of decentralized applications.</p>
-                    <button onclick="location.href='/dashboard.html'" class="btn-primary px-8 py-4 rounded-full text-lg">Get Started</button>
+                    <!-- AI Built Badge -->
+                    <div class="inline-block glass px-4 py-2 rounded-full mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-robot text-purple-400"></i>
+                            <span class="text-sm">100% Built by Claude AI</span>
+                        </div>
+                    </div>
+
+                    <h1 class="text-6xl md:text-7xl font-bold">
+                        The First <span class="text-gradient">AI-Built</span> Blockchain
+                    </h1>
+                    <p class="text-xl text-gray-400">
+                        Every line of code written by Claude AI - Anthropic's frontier model.
+                        Featuring smart contracts, Solana bridge, HD wallets, and real monetary value.
+                    </p>
+
+                    <!-- Price Display -->
+                    <div class="glass p-4 rounded-xl inline-block">
+                        <div class="text-sm text-gray-400 mb-1">STRAT Price</div>
+                        <div class="text-3xl font-bold text-green-400" id="price">$0.01</div>
+                    </div>
+
+                    <button onclick="location.href='/dashboard.html'" class="btn-primary px-8 py-4 rounded-full text-lg">
+                        <i class="fas fa-rocket mr-2"></i> Launch App
+                    </button>
+
                     <div class="grid grid-cols-3 gap-6 pt-8">
                         <div><div class="text-3xl font-bold text-gradient" id="blocks">0</div><div class="text-sm text-gray-500">Blocks</div></div>
                         <div><div class="text-3xl font-bold text-gradient" id="supply">0</div><div class="text-sm text-gray-500">Supply</div></div>
-                        <div><div class="text-3xl font-bold text-gradient">10s</div><div class="text-sm text-gray-500">Block Time</div></div>
+                        <div><div class="text-3xl font-bold text-gradient" id="mcap">$0</div><div class="text-sm text-gray-500">Market Cap</div></div>
                     </div>
                 </div>
                 <div class="glass p-8 rounded-3xl float">
-                    <canvas id="chart" width="400" height="400"></canvas>
+                    <div class="text-center mb-6">
+                        <i class="fas fa-brain text-8xl text-gradient"></i>
+                        <div class="text-2xl font-bold mt-4 text-gradient">Powered by Claude</div>
+                        <div class="text-gray-400 text-sm">Anthropic's Advanced AI</div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                            <span>Proof-of-Work Consensus</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                            <span>UTXO Transaction Model</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                            <span>Smart Contract Support</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                            <span>Solana Bridge Integration</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                            <span>Real Monetary Value</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -57,13 +106,29 @@
 
         async function loadStats() {
             try {
-                const res = await fetch('/api/blockchain/stats');
-                const data = await res.json();
-                if (data.stats) {
-                    document.getElementById('blocks').textContent = data.stats.blockHeight;
-                    document.getElementById('supply').textContent = Math.floor(data.stats.totalSupply);
+                const [statsRes, priceRes] = await Promise.all([
+                    fetch('/api/blockchain/stats'),
+                    fetch('/api/price/current')
+                ]);
+
+                const stats = await statsRes.json();
+                const price = await priceRes.json();
+
+                if (stats.stats) {
+                    document.getElementById('blocks').textContent = stats.stats.blockHeight;
+                    document.getElementById('supply').textContent = Math.floor(stats.stats.totalSupply);
                 }
-            } catch(e) {}
+
+                if (price.success && price.price) {
+                    document.getElementById('price').textContent = '$' + price.price.usd.toFixed(4);
+                    const mcap = price.price.marketCap || 0;
+                    document.getElementById('mcap').textContent = '$' + (mcap >= 1000000 ?
+                        (mcap / 1000000).toFixed(2) + 'M' :
+                        mcap.toFixed(0));
+                }
+            } catch(e) {
+                console.error('Failed to load stats:', e);
+            }
         }
         loadStats();
         setInterval(loadStats, 10000);
