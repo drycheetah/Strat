@@ -128,8 +128,13 @@ const ddosDetection = () => {
     const ip = req.ip || req.connection.remoteAddress;
     const now = Date.now();
 
-    // Skip for localhost in development
-    if (process.env.NODE_ENV === 'development' && (ip === '127.0.0.1' || ip === '::1')) {
+    // Skip DDoS protection entirely in development mode
+    if (process.env.NODE_ENV === 'development') {
+      return next();
+    }
+
+    // Also skip for localhost IPs
+    if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') {
       return next();
     }
 
@@ -154,9 +159,9 @@ const ddosDetection = () => {
       data.endpoints.add(req.path);
     }
 
-    // Detect DDoS patterns
-    // 1. Too many requests per second (>100 req/min)
-    if (data.count > 100) {
+    // Detect DDoS patterns (only in production)
+    // 1. Too many requests per second (>200 req/min, increased from 100)
+    if (data.count > 200) {
       suspiciousIPs.add(ip);
       logger.error(`DDoS detected from IP ${ip}: ${data.count} requests/min`);
       return res.status(429).json({
@@ -165,8 +170,8 @@ const ddosDetection = () => {
       });
     }
 
-    // 2. Scanning multiple endpoints rapidly (>30 unique endpoints/min)
-    if (data.endpoints.size > 30) {
+    // 2. Scanning multiple endpoints rapidly (>50 unique endpoints/min, increased from 30)
+    if (data.endpoints.size > 50) {
       suspiciousIPs.add(ip);
       logger.error(`Endpoint scanning detected from IP ${ip}: ${data.endpoints.size} unique endpoints`);
       return res.status(429).json({
@@ -176,7 +181,7 @@ const ddosDetection = () => {
     }
 
     // If IP was previously marked as suspicious, enforce strict limits
-    if (suspiciousIPs.has(ip) && data.count > 10) {
+    if (suspiciousIPs.has(ip) && data.count > 20) {
       logger.warn(`Blocked suspicious IP ${ip}: ${data.count} requests`);
       return res.status(429).json({
         error: 'IP blocked',
