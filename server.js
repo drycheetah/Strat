@@ -19,6 +19,7 @@ const blockchainRoutes = require('./routes/blockchain.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const contractRoutes = require('./routes/contract.routes');
 const bridgeRoutes = require('./routes/bridge.routes');
+const miningRoutes = require('./routes/mining.routes');
 
 class ProductionServer {
   constructor() {
@@ -204,6 +205,7 @@ class ProductionServer {
     this.app.use('/api/transactions', transactionRoutes);
     this.app.use('/api/contracts', contractRoutes);
     this.app.use('/api/bridge', bridgeRoutes);
+    this.app.use('/api/mining', miningRoutes);
     this.app.use('/api/price', require('./routes/price.routes'));
     this.app.use('/api/liquidity', require('./routes/liquidity.routes'));
 

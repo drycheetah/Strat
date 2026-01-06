@@ -1,0 +1,30 @@
+{
+  "name": "strat-miner",
+  "version": "1.0.0",
+  "description": "Standalone mining tool for STRAT blockchain",
+  "main": "strat-miner.js",
+  "bin": {
+    "strat-miner": "./strat-miner.js"
+  },
+  "scripts": {
+    "start": "node strat-miner.js",
+    "mine": "node strat-miner.js"
+  },
+  "keywords": [
+    "strat",
+    "blockchain",
+    "mining",
+    "cryptocurrency",
+    "cli"
+  ],
+  "author": "STRAT Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/strat/miner.git"
+  },
+  "preferGlobal": true
+}
