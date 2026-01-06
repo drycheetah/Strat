@@ -22,16 +22,22 @@ exports.getBridgeInfo = async (req, res) => {
 
     // Get current price from AMM pool - BACKED BY REAL SOL
     const pool = await LiquidityPool.getPool(req.blockchain);
-    const currentRate = pool.stratReserve / pool.solReserve; // STRAT per SOL
+
+    // Calculate exchange rate with safety checks
+    let currentRate = 0;
+    if (pool.solReserve > 0 && pool.stratReserve > 0) {
+      currentRate = pool.stratReserve / pool.solReserve; // STRAT per SOL
+    }
 
     res.json({
       bridgeAddress: BRIDGE_ADDRESS,
-      exchangeRate: currentRate,
+      exchangeRate: currentRate || 10, // Default to 10 STRAT/SOL if no liquidity
       bridgeFee: BRIDGE_FEE_PERCENT,
       network: 'mainnet-beta',
       solReserve: pool.solReserve,
       stratReserve: pool.stratReserve,
       priceUSD: pool.getPriceUSD(),
+      hasLiquidity: pool.solReserve > 0 && pool.stratReserve > 0,
       disclaimer: `${BRIDGE_FEE_PERCENT}% pool fee. Reserves backed by real SOL at ${BRIDGE_ADDRESS}.`
     });
   } catch (error) {

@@ -105,8 +105,13 @@ liquidityPoolSchema.methods.getPrice = function() {
 };
 
 // Calculate current price in USD (assuming SOL price)
-liquidityPoolSchema.methods.getPriceUSD = function(solPriceUSD = 140) {
+liquidityPoolSchema.methods.getPriceUSD = function(solPriceUSD = 180) {
+  // If no liquidity, return 0
+  if (this.solReserve === 0 || this.stratReserve === 0) {
+    return 0;
+  }
   const stratPerSol = this.stratReserve / this.solReserve;
+  if (stratPerSol === 0) return 0;
   return solPriceUSD / stratPerSol;
 };
 
