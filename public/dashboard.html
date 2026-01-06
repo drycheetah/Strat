@@ -257,8 +257,10 @@
             <div id="section-bridge" class="hidden">
                 <div class="glass p-8 rounded-2xl max-w-3xl mx-auto">
                     <h2 class="text-2xl font-bold mb-4">SOL → STRAT Bridge</h2>
-                    <div class="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl mb-6">
-                        <p class="text-sm text-yellow-200"><strong>⚠️ EXPERIMENTAL:</strong> STRAT tokens have no monetary value. This bridge is for testing purposes only. Use at your own risk.</p>
+                    <div class="bg-purple-900/20 border border-purple-500/30 p-4 rounded-xl mb-6">
+                        <p class="text-sm text-purple-200">
+                            <strong>💰 Bridge Fee:</strong> <span id="bridge-fee-display">2%</span> fee applies to all conversions
+                        </p>
                     </div>
 
                     <div class="space-y-6">
@@ -268,7 +270,7 @@
                                 <li>Send SOL to the bridge address below</li>
                                 <li>Copy your transaction signature</li>
                                 <li>Paste it here to claim your STRAT tokens</li>
-                                <li>Exchange rate: <span class="text-gradient font-bold" id="exchange-rate">1 SOL = 5 STRAT, 1 STRAT ≈ $27 USD</span></li>
+                                <li>Exchange rate: <span class="text-gradient font-bold" id="exchange-rate">1 SOL = 1000 STRAT</span> (minus <span id="bridge-fee-display2">2%</span> fee)</li>
                             </ol>
                         </div>
 
@@ -814,6 +816,11 @@
                 const data = await res.json();
                 document.getElementById('bridge-address').value = data.bridgeAddress;
                 document.getElementById('exchange-rate').textContent = `1 SOL = ${data.exchangeRate} STRAT`;
+
+                if (data.bridgeFee) {
+                    document.getElementById('bridge-fee-display').textContent = `${data.bridgeFee}%`;
+                    document.getElementById('bridge-fee-display2').textContent = `${data.bridgeFee}%`;
+                }
             } catch(e) {
                 console.error('Failed to load bridge info:', e);
             }

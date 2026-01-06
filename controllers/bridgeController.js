@@ -7,7 +7,9 @@ const logger = require('../utils/logger');
 
 const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
 const BRIDGE_ADDRESS = process.env.BRIDGE_SOL_ADDRESS;
-const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 5; // 1 SOL = 1000 STRAT
+const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 1000; // 1 SOL = 1000 STRAT
+const BRIDGE_FEE_PERCENT = parseFloat(process.env.BRIDGE_FEE_PERCENT) || 2; // 2% bridge fee
+const BRIDGE_FEE_WALLET = process.env.BRIDGE_FEE_WALLET; // Your wallet to collect fees
 
 /**
  * Get bridge information
@@ -20,8 +22,9 @@ exports.getBridgeInfo = async (req, res) => {
     res.json({
       bridgeAddress: BRIDGE_ADDRESS,
       exchangeRate: EXCHANGE_RATE,
+      bridgeFee: BRIDGE_FEE_PERCENT,
       network: 'mainnet-beta',
-      disclaimer: 'EXPERIMENTAL FEATURE: STRAT tokens have no monetary value. This bridge is for testing purposes only.'
+      disclaimer: `${BRIDGE_FEE_PERCENT}% bridge fee applies. Send SOL to receive STRAT.`
     });
   } catch (error) {
     logger.error(`Error getting bridge info: ${error.message}`);
@@ -126,9 +129,13 @@ exports.verifyDeposit = async (req, res) => {
     }
 
     const solReceived = lamportsReceived / LAMPORTS_PER_SOL;
-    const stratToCredit = solReceived * EXCHANGE_RATE;
+    const stratGross = solReceived * EXCHANGE_RATE;
 
-    logger.info(`SOL deposit verified: ${solReceived} SOL = ${stratToCredit} STRAT`);
+    // Calculate bridge fee
+    const bridgeFee = stratGross * (BRIDGE_FEE_PERCENT / 100);
+    const stratToCredit = stratGross - bridgeFee;
+
+    logger.info(`SOL deposit verified: ${solReceived} SOL = ${stratGross} STRAT (${bridgeFee} fee, ${stratToCredit} net)`);
 
     // Check if this transaction was already processed
     const existingBridge = await BridgeTransaction.findOne({ solanaSignature: signature });
@@ -142,15 +149,28 @@ exports.verifyDeposit = async (req, res) => {
       return res.status(404).json({ error: 'Wallet not found' });
     }
 
-    // Create a bridge credit transaction on STRAT blockchain
+    // Create a bridge credit transaction on STRAT blockchain (net amount to user)
     const bridgeTx = Transaction.createCoinbaseTx(
       wallet.address,
       req.blockchain.chain.length,
       stratToCredit
     );
 
+    // Create fee collection transaction if fee wallet is configured
+    let feeTx = null;
+    if (BRIDGE_FEE_WALLET && bridgeFee > 0) {
+      feeTx = Transaction.createCoinbaseTx(
+        BRIDGE_FEE_WALLET,
+        req.blockchain.chain.length,
+        bridgeFee
+      );
+    }
+
     // Add to pending transactions
     req.blockchain.pendingTransactions.push(bridgeTx);
+    if (feeTx) {
+      req.blockchain.pendingTransactions.push(feeTx);
+    }
 
     // Mine a block to credit the tokens immediately
     const block = req.blockchain.minePendingTransactions(wallet.address);
