@@ -57,6 +57,9 @@
                 <div class="nav-item" onclick="showSection('bridge')">
                     <i class="fas fa-bridge mr-3"></i> SOL Bridge
                 </div>
+                <div class="nav-item" onclick="showSection('buy')">
+                    <i class="fas fa-shopping-cart mr-3"></i> Buy STRAT
+                </div>
             </nav>
         </div>
         <div class="absolute bottom-0 w-full p-6 border-t border-gray-800">
@@ -297,6 +300,90 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Buy STRAT Section -->
+            <div id="section-buy" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-3xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-4">Buy STRAT</h2>
+                    <div class="bg-green-900/20 border border-green-500/30 p-4 rounded-xl mb-6">
+                        <p class="text-sm">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Purchase STRAT tokens and receive them directly to your wallet
+                        </p>
+                    </div>
+
+                    <!-- Current Price -->
+                    <div class="glass p-6 rounded-xl mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <div class="text-sm text-gray-400">Current STRAT Price</div>
+                                <div class="text-3xl font-bold text-green-400" id="buy-price">$0.01</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-400">Your Wallet</div>
+                                <div class="text-lg font-bold" id="buy-balance">0 STRAT</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Form -->
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Payment Method</label>
+                            <select id="buy-method" class="w-full px-4 py-3 rounded-xl">
+                                <option value="solana">Solana (SOL) - Use Bridge Instead</option>
+                                <option value="crypto" selected>Cryptocurrency (Coming Soon)</option>
+                                <option value="card">Credit/Debit Card (Coming Soon)</option>
+                                <option value="paypal">PayPal (Coming Soon)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Amount to Spend (USD)</label>
+                            <input id="buy-usd-amount" type="number" step="0.01" min="1" placeholder="10.00" class="w-full px-4 py-3 rounded-xl" oninput="calculateSTRAT()">
+                        </div>
+
+                        <div class="glass p-4 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">You will receive</span>
+                                <span class="text-2xl font-bold text-green-400" id="buy-strat-amount">0 STRAT</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl">
+                            <p class="text-sm text-yellow-400">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Coming Soon:</strong> Direct fiat purchases are currently under development.
+                                For now, you can acquire STRAT by:
+                            </p>
+                            <ul class="mt-3 space-y-2 text-sm">
+                                <li class="flex items-center gap-2">
+                                    <i class="fas fa-bridge text-purple-400"></i>
+                                    <span>Using the <a href="#" onclick="showSection('bridge'); return false;" class="text-green-400 underline">SOL Bridge</a> to convert Solana</span>
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <i class="fas fa-cube text-blue-400"></i>
+                                    <span>Mining blocks on the <a href="#" onclick="showSection('mine'); return false;" class="text-green-400 underline">Mining page</a></span>
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <i class="fas fa-users text-green-400"></i>
+                                    <span>Receiving from other users</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <button id="buy-btn" disabled class="btn-primary w-full px-8 py-4 rounded-xl opacity-50 cursor-not-allowed">
+                            <i class="fas fa-shopping-cart mr-2"></i> Coming Soon
+                        </button>
+
+                        <!-- Contact for OTC -->
+                        <div class="text-center pt-4 border-t border-gray-700">
+                            <p class="text-sm text-gray-400 mb-2">Interested in large purchases?</p>
+                            <p class="text-xs text-gray-500">Contact us for OTC (over-the-counter) deals</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -419,6 +506,9 @@
                     walletData = wallets.wallets[0];
                     document.getElementById('wallet-balance').textContent = walletData.balance.toFixed(2) + ' STRAT';
                     document.getElementById('wallet-address').value = walletData.address;
+
+                    // Load transaction history
+                    loadTransactionHistory();
                 }
 
                 loadBlocks();
@@ -567,6 +657,60 @@
             }
         }
 
+        async function loadTransactionHistory() {
+            if (!walletData || !walletData._id) return;
+
+            try {
+                const res = await fetch(`${API}/wallets/${walletData._id}/transactions`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const data = await res.json();
+
+                const historyEl = document.getElementById('tx-history');
+
+                if (!data.transactions || data.transactions.length === 0) {
+                    historyEl.innerHTML = '<div class="text-gray-400 text-center py-8">No transactions yet</div>';
+                    return;
+                }
+
+                const html = data.transactions.map(tx => {
+                    const typeColors = {
+                        'sent': 'text-red-400',
+                        'received': 'text-green-400',
+                        'mining_reward': 'text-purple-400'
+                    };
+                    const typeIcons = {
+                        'sent': 'fa-arrow-up',
+                        'received': 'fa-arrow-down',
+                        'mining_reward': 'fa-cube'
+                    };
+
+                    return `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas ${typeIcons[tx.type]} ${typeColors[tx.type]}"></i>
+                                    <div>
+                                        <div class="font-bold capitalize">${tx.type.replace('_', ' ')}</div>
+                                        <div class="text-xs text-gray-500">${tx.hash.substring(0, 16)}...</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold ${typeColors[tx.type]}">${tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(4)} STRAT</div>
+                                    <div class="text-xs text-gray-400">${new Date(tx.timestamp).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                historyEl.innerHTML = html;
+            } catch(e) {
+                console.error('Failed to load transaction history:', e);
+                document.getElementById('tx-history').innerHTML = '<div class="text-red-400 text-center py-8">Failed to load transactions</div>';
+            }
+        }
+
         async function sendTransaction() {
             const address = document.getElementById('send-address').value;
             const amount = parseFloat(document.getElementById('send-amount').value);
@@ -617,7 +761,35 @@
             } else if (name === 'bridge') {
                 loadBridgeInfo();
                 loadBridgeHistory();
+            } else if (name === 'buy') {
+                loadBuyPage();
             }
+        }
+
+        let currentPrice = 0.01;
+
+        async function loadBuyPage() {
+            try {
+                const res = await fetch(`${API}/price/current`);
+                const data = await res.json();
+
+                if (data.success && data.price) {
+                    currentPrice = data.price.usd;
+                    document.getElementById('buy-price').textContent = '$' + currentPrice.toFixed(4);
+                }
+
+                if (walletData) {
+                    document.getElementById('buy-balance').textContent = walletData.balance.toFixed(2) + ' STRAT';
+                }
+            } catch(e) {
+                console.error('Failed to load buy page:', e);
+            }
+        }
+
+        function calculateSTRAT() {
+            const usdAmount = parseFloat(document.getElementById('buy-usd-amount').value) || 0;
+            const stratAmount = usdAmount / currentPrice;
+            document.getElementById('buy-strat-amount').textContent = stratAmount.toFixed(2) + ' STRAT';
         }
 
         function copyAddress() {
