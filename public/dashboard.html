@@ -1951,21 +1951,44 @@
 
         // Portfolio Functions
         async function loadPortfolio() {
-            if (!walletData) return;
+            if (!walletData) {
+                console.log('No wallet data available for portfolio');
+                return;
+            }
 
             try {
                 const res = await fetch(`${API}/explorer/address/${walletData.address}`);
                 const data = await res.json();
 
                 if (data.success) {
-                    const balance = data.address.balance || 0;
-                    const staked = data.address.stakedBalance || 0;
-                    const usdValue = balance * 0.01; // Mock price
+                    // API returns balance directly at root level, not nested
+                    const balance = data.balance || 0;
+                    const totalReceived = data.totalReceived || 0;
+
+                    // Get staked balance from wallet info
+                    let staked = 0;
+                    try {
+                        const walletRes = await fetch(`${API}/wallet/info`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const walletInfo = await walletRes.json();
+                        staked = walletInfo.wallet?.stakedBalance || 0;
+                    } catch(e) {
+                        console.error('Could not fetch staked balance:', e);
+                    }
+
+                    const totalEarned = Math.max(0, totalReceived);
+                    const usdValue = balance * 0.01; // Mock price $0.01
 
                     document.getElementById('portfolio-balance').textContent = balance.toFixed(2) + ' STRAT';
                     document.getElementById('portfolio-usd').textContent = '$' + usdValue.toFixed(2);
                     document.getElementById('portfolio-staked').textContent = staked.toFixed(2) + ' STRAT';
-                    document.getElementById('portfolio-value').textContent = '$' + (usdValue + staked * 0.01).toFixed(2);
+                    document.getElementById('portfolio-earned').textContent = totalEarned.toFixed(2) + ' STRAT';
+                    document.getElementById('portfolio-value').textContent = '$' + ((balance + staked) * 0.01).toFixed(2);
+
+                    // Calculate change percentage (mock for now)
+                    document.getElementById('portfolio-change').textContent = '+0%';
+                    document.getElementById('portfolio-change').className = 'text-xs text-green-400';
 
                     // Asset breakdown
                     const assets = [
