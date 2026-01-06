@@ -99,19 +99,25 @@
 ## 📊 Revenue Projections
 
 **Conservative (10 users/month):**
-- Bridge fees: 10 × 1 SOL × 2% = 0.2 SOL = ~$28/month
-- Mining rewards: 50 STRAT/block × 30 blocks = 1,500 STRAT = $15
-- **Total: ~$43/month**
+- Bridge fees: 10 users × 1 SOL × 10 STRAT/SOL × 2% = 2 STRAT ≈ $0.02
+- Mining rewards: 1 STRAT/block × 30 blocks = 30 STRAT = $0.30
+- **Total: ~$0.32/month**
 
 **Moderate (50 users/month):**
-- Bridge fees: 50 × 2 SOL × 2% = 2 SOL = ~$280/month
-- Mining rewards: 100 blocks = 5,000 STRAT = $50
-- **Total: ~$330/month**
+- Bridge fees: 50 × 2 SOL × 10 STRAT/SOL × 2% = 20 STRAT ≈ $0.20
+- Mining rewards: 100 blocks = 100 STRAT = $1.00
+- **Total: ~$1.20/month**
 
 **Aggressive (200 users/month):**
-- Bridge fees: 200 × 5 SOL × 2% = 20 SOL = ~$2,800/month
-- Mining rewards: 200 blocks = 10,000 STRAT = $100
-- **Total: ~$2,900/month**
+- Bridge fees: 200 × 5 SOL × 10 STRAT/SOL × 2% = 200 STRAT ≈ $2
+- Mining rewards: 500 blocks = 500 STRAT = $5
+- **Total: ~$7/month**
+
+**💡 REAL MONEY STRATEGY:** The income above is tiny. Your REAL play is:
+1. Pre-mine 1000-5000 STRAT while difficulty is low
+2. Market heavily to increase demand
+3. Raise STRAT price from $0.01 → $0.10 → $1.00
+4. Your 5000 STRAT goes from $50 → $500 → $5,000!
 
 ---
 

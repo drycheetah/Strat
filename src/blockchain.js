@@ -6,7 +6,7 @@ class Blockchain {
   constructor() {
     this.chain = [this.createGenesisBlock()];
     this.difficulty = parseInt(process.env.MINING_DIFFICULTY) || 4;
-    this.miningReward = parseFloat(process.env.MINING_REWARD) || 50;
+    this.miningReward = parseFloat(process.env.MINING_REWARD) || 1;
     this.transactionFee = parseFloat(process.env.TRANSACTION_FEE) || 0.01;
     this.pendingTransactions = [];
     this.utxos = new Map();

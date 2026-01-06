@@ -7,7 +7,7 @@ const logger = require('../utils/logger');
 
 const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
 const BRIDGE_ADDRESS = process.env.BRIDGE_SOL_ADDRESS;
-const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 1000; // 1 SOL = 1000 STRAT
+const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 10; // 1 SOL = 10 STRAT
 const BRIDGE_FEE_PERCENT = parseFloat(process.env.BRIDGE_FEE_PERCENT) || 2; // 2% bridge fee
 const BRIDGE_FEE_WALLET = process.env.BRIDGE_FEE_WALLET; // Your wallet to collect fees
 
