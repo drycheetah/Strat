@@ -325,6 +325,49 @@ const setPrimaryWallet = async (req, res) => {
   }
 };
 
+/**
+ * Get primary wallet info for current user
+ */
+const getInfo = async (req, res) => {
+  try {
+    // Get user's primary wallet or first wallet
+    const wallet = await Wallet.findOne({
+      user: req.user._id,
+      isPrimary: true
+    }) || await Wallet.findOne({ user: req.user._id });
+
+    if (!wallet) {
+      return res.status(404).json({
+        error: 'No wallet found',
+        message: 'User has no wallets'
+      });
+    }
+
+    // Update balance if blockchain available
+    if (req.blockchain) {
+      await wallet.updateBalance(req.blockchain);
+    }
+
+    res.json({
+      success: true,
+      wallet: {
+        id: wallet._id,
+        address: wallet.address,
+        name: wallet.name,
+        balance: wallet.balance,
+        stakedBalance: wallet.stakedBalance || 0,
+        isPrimary: wallet.isPrimary
+      }
+    });
+  } catch (error) {
+    logger.error(`Get wallet info error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get wallet info',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   createWallet,
   restoreWallet,
@@ -332,5 +375,6 @@ module.exports = {
   getWallet,
   getTransactionHistory,
   exportMnemonic,
-  setPrimaryWallet
+  setPrimaryWallet,
+  getInfo
 };
