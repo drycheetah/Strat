@@ -53,6 +53,10 @@ const walletSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  stakedBalance: {
+    type: Number,
+    default: 0
+  },
   lastBalanceUpdate: Date,
   transactionCount: {
     type: Number,

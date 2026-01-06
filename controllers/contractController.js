@@ -1,6 +1,7 @@
 const Wallet = require('../models/Wallet');
 const { Transaction } = require('../src/transaction');
 const logger = require('../utils/logger');
+const { estimateGas, calculateGasPrice } = require('../src/gas');
 
 /**
  * Deploy smart contract
@@ -264,10 +265,102 @@ const listContracts = async (req, res) => {
   }
 };
 
+/**
+ * Estimate gas for contract call
+ */
+const estimateContractGas = async (req, res) => {
+  try {
+    const { contractAddress, params } = req.body;
+    const blockchain = req.blockchain;
+
+    const contract = blockchain.getContract(contractAddress);
+    if (!contract) {
+      return res.status(404).json({
+        error: 'Contract not found'
+      });
+    }
+
+    const context = {
+      caller: req.body.from || 'estimator',
+      value: req.body.value || 0,
+      blockNumber: blockchain.chain.length,
+      timestamp: Date.now(),
+      difficulty: blockchain.difficulty
+    };
+
+    const gasEstimate = estimateGas(
+      contract.code,
+      contract.state,
+      params || {},
+      context
+    );
+
+    const mempoolStats = blockchain.mempool.getStats();
+    const gasPrice = calculateGasPrice(
+      mempoolStats.count,
+      mempoolStats.utilization
+    );
+
+    const totalCost = gasEstimate * gasPrice;
+
+    res.json({
+      success: true,
+      gasEstimate,
+      gasPrice,
+      totalCost,
+      mempoolUtilization: mempoolStats.utilization
+    });
+
+  } catch (error) {
+    logger.error(`Gas estimation error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to estimate gas',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get current gas price
+ */
+const getGasPrice = async (req, res) => {
+  try {
+    const blockchain = req.blockchain;
+    const mempoolStats = blockchain.mempool.getStats();
+
+    const gasPrice = calculateGasPrice(
+      mempoolStats.count,
+      mempoolStats.utilization
+    );
+
+    res.json({
+      success: true,
+      gasPrice,
+      mempoolSize: mempoolStats.count,
+      mempoolUtilization: mempoolStats.utilization,
+      recommendation: {
+        slow: gasPrice * 0.8,
+        standard: gasPrice,
+        fast: gasPrice * 1.5,
+        instant: gasPrice * 2
+      }
+    });
+
+  } catch (error) {
+    logger.error(`Get gas price error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get gas price',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   deployContract,
   callContract,
   getContract,
   getContractState,
-  listContracts
+  listContracts,
+  estimateContractGas,
+  getGasPrice
 };

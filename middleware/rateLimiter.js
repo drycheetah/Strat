@@ -76,9 +76,145 @@ const miningLimiter = rateLimit({
   }
 });
 
+/**
+ * Contract deployment rate limiter (expensive operation)
+ */
+const contractDeployLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 contract deployments per hour
+  message: {
+    error: 'Contract deployment rate limit exceeded'
+  },
+  handler: (req, res) => {
+    logger.warn(`Contract deployment rate limit exceeded for user: ${req.user?._id}`);
+    res.status(429).json({
+      error: 'Too many contract deployments',
+      message: 'Please wait before deploying more contracts'
+    });
+  }
+});
+
+/**
+ * Explorer rate limiter (more lenient)
+ */
+const explorerLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute
+  message: {
+    error: 'Explorer rate limit exceeded'
+  }
+});
+
+/**
+ * DDoS detection middleware
+ * Monitors for suspicious patterns
+ */
+const ddosDetection = () => {
+  const requestCounts = new Map();
+  const suspiciousIPs = new Set();
+
+  // Clean up old entries every 5 minutes
+  setInterval(() => {
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    for (let [ip, data] of requestCounts) {
+      if (data.timestamp < fiveMinutesAgo) {
+        requestCounts.delete(ip);
+        suspiciousIPs.delete(ip);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  return (req, res, next) => {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+
+    // Skip for localhost in development
+    if (process.env.NODE_ENV === 'development' && (ip === '127.0.0.1' || ip === '::1')) {
+      return next();
+    }
+
+    if (!requestCounts.has(ip)) {
+      requestCounts.set(ip, {
+        count: 1,
+        timestamp: now,
+        endpoints: new Set([req.path])
+      });
+      return next();
+    }
+
+    const data = requestCounts.get(ip);
+
+    // Reset counter if more than 1 minute has passed
+    if (now - data.timestamp > 60000) {
+      data.count = 1;
+      data.timestamp = now;
+      data.endpoints.clear();
+    } else {
+      data.count++;
+      data.endpoints.add(req.path);
+    }
+
+    // Detect DDoS patterns
+    // 1. Too many requests per second (>100 req/min)
+    if (data.count > 100) {
+      suspiciousIPs.add(ip);
+      logger.error(`DDoS detected from IP ${ip}: ${data.count} requests/min`);
+      return res.status(429).json({
+        error: 'Suspicious activity detected',
+        message: 'Your IP has been temporarily blocked due to suspicious activity.'
+      });
+    }
+
+    // 2. Scanning multiple endpoints rapidly (>30 unique endpoints/min)
+    if (data.endpoints.size > 30) {
+      suspiciousIPs.add(ip);
+      logger.error(`Endpoint scanning detected from IP ${ip}: ${data.endpoints.size} unique endpoints`);
+      return res.status(429).json({
+        error: 'Suspicious activity detected',
+        message: 'Endpoint scanning detected. Your IP has been temporarily blocked.'
+      });
+    }
+
+    // If IP was previously marked as suspicious, enforce strict limits
+    if (suspiciousIPs.has(ip) && data.count > 10) {
+      logger.warn(`Blocked suspicious IP ${ip}: ${data.count} requests`);
+      return res.status(429).json({
+        error: 'IP blocked',
+        message: 'Your IP is temporarily blocked. Please try again later.'
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Request size limiter to prevent payload attacks
+ */
+const requestSizeLimiter = (maxSize = 1000000) => {
+  return (req, res, next) => {
+    const contentLength = req.headers['content-length'];
+
+    if (contentLength && parseInt(contentLength) > maxSize) {
+      logger.warn(`Large payload rejected from IP ${req.ip}: ${contentLength} bytes`);
+      return res.status(413).json({
+        error: 'Payload too large',
+        message: `Request body must be less than ${(maxSize / 1000000).toFixed(1)}MB`,
+        maxSize
+      });
+    }
+
+    next();
+  };
+};
+
 module.exports = {
   apiLimiter,
   authLimiter,
   transactionLimiter,
-  miningLimiter
+  miningLimiter,
+  contractDeployLimiter,
+  explorerLimiter,
+  ddosDetection,
+  requestSizeLimiter
 };

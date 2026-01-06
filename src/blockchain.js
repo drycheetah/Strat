@@ -1,6 +1,8 @@
 const Block = require('./block');
 const { Transaction } = require('./transaction');
 const CryptoUtils = require('./crypto');
+const Mempool = require('./mempool');
+const { executeWithGas } = require('./gas');
 
 class Blockchain {
   constructor() {
@@ -9,6 +11,7 @@ class Blockchain {
     this.miningReward = parseFloat(process.env.MINING_REWARD) || 1;
     this.transactionFee = parseFloat(process.env.TRANSACTION_FEE) || 0.01;
     this.pendingTransactions = [];
+    this.mempool = new Mempool(); // New mempool with fee prioritization
     this.utxos = new Map();
     this.spentInMempool = new Set(); // Track UTXOs spent in pending transactions
     this.contracts = new Map();
@@ -48,8 +51,16 @@ class Blockchain {
       this.miningReward
     );
 
+    // Get transactions from mempool (priority-sorted) or fallback to pendingTransactions
+    let transactionsToInclude = [];
+    if (this.mempool.transactions.size > 0) {
+      transactionsToInclude = this.mempool.getTransactionsForMining(100, 1000000);
+    } else {
+      transactionsToInclude = [...this.pendingTransactions];
+    }
+
     let totalFees = 0;
-    for (let tx of this.pendingTransactions) {
+    for (let tx of transactionsToInclude) {
       if (!tx.isCoinbase && !tx.isContractDeploy && !tx.isContractCall) {
         const inputSum = this.calculateInputSum(tx);
         const outputSum = this.calculateOutputSum(tx);
@@ -61,7 +72,7 @@ class Blockchain {
       rewardTx.outputs[0].amount += totalFees;
     }
 
-    const transactionsToMine = [rewardTx, ...this.pendingTransactions];
+    const transactionsToMine = [rewardTx, ...transactionsToInclude];
 
     const block = new Block(
       this.chain.length,
@@ -73,6 +84,14 @@ class Blockchain {
     this.chain.push(block);
 
     this.updateUTXOs(block);
+
+    // Remove mined transactions from mempool
+    for (let tx of transactionsToInclude) {
+      this.mempool.removeTransaction(tx.hash);
+    }
+
+    // Cleanup invalid transactions in mempool
+    this.mempool.cleanupInvalidTransactions(this);
 
     this.pendingTransactions = [];
     this.spentInMempool.clear(); // Clear spent UTXOs tracking
@@ -289,7 +308,9 @@ class Blockchain {
       code: transaction.contractCode,
       deployer: transaction.from,
       state: {},
-      balance: 0
+      balance: 0,
+      gasUsed: 0,
+      callCount: 0
     });
 
     console.log(`Contract deployed at: ${contractAddress}`);
@@ -303,13 +324,43 @@ class Blockchain {
     }
 
     try {
-      const contractFunction = new Function('state', 'params', 'caller', contract.code);
-      const result = contractFunction(contract.state, transaction.params, transaction.from);
+      // Gas limit from transaction or default
+      const gasLimit = transaction.gasLimit || 1000000;
+
+      // Execute with gas metering
+      const context = {
+        caller: transaction.from,
+        value: transaction.value || 0,
+        blockNumber: this.chain.length,
+        timestamp: Date.now(),
+        difficulty: this.difficulty
+      };
+
+      const execution = executeWithGas(
+        contract.code,
+        contract.state,
+        transaction.params,
+        context,
+        gasLimit
+      );
+
+      if (!execution.success) {
+        throw new Error(`Contract execution failed: ${execution.error}`);
+      }
+
+      // Update contract stats
+      contract.gasUsed += execution.gasUsed;
+      contract.callCount++;
 
       console.log(`Contract executed: ${transaction.contractAddress}`);
-      console.log(`Result:`, result);
+      console.log(`Gas used: ${execution.gasUsed}`);
+      console.log(`Result:`, execution.result);
 
-      return result;
+      return {
+        result: execution.result,
+        gasUsed: execution.gasUsed,
+        gasReport: execution.gasReport
+      };
     } catch (error) {
       console.error('Contract execution error:', error.message);
       throw error;

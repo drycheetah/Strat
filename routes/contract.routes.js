@@ -8,6 +8,8 @@ const { authenticate, optionalAuth } = require('../middleware/auth');
 router.get('/', contractController.listContracts);
 router.get('/:address', contractController.getContract);
 router.get('/:address/state', contractController.getContractState);
+router.post('/estimate-gas', contractController.estimateContractGas);
+router.get('/gas/price', contractController.getGasPrice);
 
 // Protected routes
 router.post('/deploy', authenticate, validate(schemas.deployContract), contractController.deployContract);

@@ -206,6 +206,33 @@ exports.submitBlock = async (req, res) => {
 
     logger.info(`Block #${block.index} mined by external miner ${minerAddress}`);
 
+    // Emit WebSocket events
+    if (req.io) {
+      // Broadcast new block to all subscribed clients
+      req.io.to('blocks').emit('new_block', {
+        index: block.index,
+        hash: block.hash,
+        miner: minerAddress,
+        reward: blockchain.miningReward,
+        transactionCount: block.transactions.length,
+        timestamp: block.timestamp
+      });
+
+      // Notify miner's address subscribers
+      req.io.to(`address:${minerAddress}`).emit('address_balance', {
+        address: minerAddress,
+        balance: wallet.balance,
+        change: blockchain.miningReward
+      });
+
+      // Broadcast to mining subscribers
+      req.io.to('mining').emit('block_mined', {
+        index: block.index,
+        miner: minerAddress,
+        reward: blockchain.miningReward
+      });
+    }
+
     res.json({
       success: true,
       message: 'Block accepted!',

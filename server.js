@@ -20,6 +20,9 @@ const transactionRoutes = require('./routes/transaction.routes');
 const contractRoutes = require('./routes/contract.routes');
 const bridgeRoutes = require('./routes/bridge.routes');
 const miningRoutes = require('./routes/mining.routes');
+const mempoolRoutes = require('./routes/mempool.routes');
+const explorerRoutes = require('./routes/explorer.routes');
+const stakingRoutes = require('./routes/staking.routes');
 
 class ProductionServer {
   constructor() {
@@ -150,6 +153,11 @@ class ProductionServer {
   }
 
   setupMiddleware() {
+    // DDoS Protection
+    const { ddosDetection, requestSizeLimiter } = require('./middleware/rateLimiter');
+    this.app.use(ddosDetection());
+    this.app.use(requestSizeLimiter(10000000)); // 10MB max
+
     // Security
     this.app.use(helmet({
       contentSecurityPolicy: false,
@@ -206,6 +214,9 @@ class ProductionServer {
     this.app.use('/api/contracts', contractRoutes);
     this.app.use('/api/bridge', bridgeRoutes);
     this.app.use('/api/mining', miningRoutes);
+    this.app.use('/api/mempool', mempoolRoutes);
+    this.app.use('/api/explorer', explorerRoutes);
+    this.app.use('/api/staking', stakingRoutes);
     this.app.use('/api/price', require('./routes/price.routes'));
     this.app.use('/api/liquidity', require('./routes/liquidity.routes'));
 
@@ -269,32 +280,84 @@ class ProductionServer {
       socket.emit('stats', {
         blockHeight: this.blockchain.chain.length,
         difficulty: this.blockchain.difficulty,
-        pendingTransactions: this.blockchain.pendingTransactions.length
+        pendingTransactions: this.blockchain.pendingTransactions.length,
+        mempoolSize: this.blockchain.mempool.transactions.size,
+        utxos: this.blockchain.utxos.size
+      });
+
+      // Subscribe to address updates
+      socket.on('subscribe_address', (address) => {
+        socket.join(`address:${address}`);
+        logger.info(`Client ${socket.id} subscribed to address ${address}`);
+
+        // Send current balance
+        const balance = this.blockchain.getBalance(address);
+        socket.emit('address_balance', { address, balance });
+      });
+
+      socket.on('unsubscribe_address', (address) => {
+        socket.leave(`address:${address}`);
+        logger.info(`Client ${socket.id} unsubscribed from address ${address}`);
+      });
+
+      // Subscribe to new blocks
+      socket.on('subscribe_blocks', () => {
+        socket.join('blocks');
+        logger.info(`Client ${socket.id} subscribed to new blocks`);
+      });
+
+      socket.on('unsubscribe_blocks', () => {
+        socket.leave('blocks');
+      });
+
+      // Subscribe to mempool updates
+      socket.on('subscribe_mempool', () => {
+        socket.join('mempool');
+        logger.info(`Client ${socket.id} subscribed to mempool`);
+
+        // Send current mempool stats
+        const mempoolStats = this.blockchain.mempool.getStats();
+        socket.emit('mempool_stats', mempoolStats);
+      });
+
+      socket.on('unsubscribe_mempool', () => {
+        socket.leave('mempool');
+      });
+
+      // Subscribe to mining updates
+      socket.on('subscribe_mining', () => {
+        socket.join('mining');
+        logger.info(`Client ${socket.id} subscribed to mining updates`);
+      });
+
+      socket.on('unsubscribe_mining', () => {
+        socket.leave('mining');
       });
 
       socket.on('disconnect', () => {
         logger.info(`WebSocket client disconnected: ${socket.id}`);
       });
-
-      socket.on('subscribe_address', (address) => {
-        socket.join(`address:${address}`);
-        logger.info(`Client ${socket.id} subscribed to address ${address}`);
-      });
-
-      socket.on('unsubscribe_address', (address) => {
-        socket.leave(`address:${address}`);
-      });
     });
 
     // Broadcast stats every 10 seconds
     setInterval(() => {
+      const mempoolStats = this.blockchain.mempool.getStats();
       this.io.emit('stats', {
         blockHeight: this.blockchain.chain.length,
         difficulty: this.blockchain.difficulty,
         pendingTransactions: this.blockchain.pendingTransactions.length,
+        mempoolSize: this.blockchain.mempool.transactions.size,
+        mempoolUtilization: mempoolStats.utilization,
+        utxos: this.blockchain.utxos.size,
         timestamp: Date.now()
       });
     }, 10000);
+
+    // Broadcast mempool stats every 5 seconds
+    setInterval(() => {
+      const mempoolStats = this.blockchain.mempool.getStats();
+      this.io.to('mempool').emit('mempool_stats', mempoolStats);
+    }, 5000);
   }
 
   initializeP2P() {
