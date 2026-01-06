@@ -58,7 +58,7 @@ const blockSchema = new mongoose.Schema({
   },
   merkleRoot: {
     type: String,
-    required: true
+    default: ''
   },
   miner: {
     type: String,
