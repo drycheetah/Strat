@@ -239,7 +239,15 @@ async function submitBlock(block, nonce, hash) {
       stats.totalEarnings += (result.reward || 1);
       stats.currentBlock++;
     } else if (result && result.error) {
-      console.log(`\n⚠️  Block rejected: ${result.message || result.error}`);
+      // Handle specific errors
+      if (result.error === 'Block already mined' || result.error === 'Stale block') {
+        // Another miner beat us - this is normal in competitive mining, just get new work
+        if (result.currentBlock) {
+          stats.currentBlock = result.currentBlock;
+        }
+      } else {
+        console.log(`\n⚠️  Block rejected: ${result.message || result.error}`);
+      }
     }
   } catch (error) {
     console.log(`\n❌ Failed to submit block: ${error.message || 'Unknown error'}`);

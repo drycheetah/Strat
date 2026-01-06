@@ -143,7 +143,55 @@ exports.submitBlock = async (req, res) => {
       merkleRoot: minedBlock.merkleRoot
     };
 
-    // Add block to blockchain
+    // Check if block already exists (race condition protection)
+    const existingBlock = await BlockModel.findOne({ index: block.index });
+    if (existingBlock) {
+      return res.status(409).json({
+        error: 'Block already mined',
+        message: `Block #${block.index} was already mined by another miner`,
+        currentBlock: blockchain.chain.length
+      });
+    }
+
+    // Check if this block is still valid (blockchain may have advanced)
+    if (block.index !== blockchain.chain.length) {
+      return res.status(410).json({
+        error: 'Stale block',
+        message: `Block #${block.index} is outdated. Current block: #${blockchain.chain.length}`,
+        currentBlock: blockchain.chain.length
+      });
+    }
+
+    // Save block to database first (atomic operation)
+    try {
+      const blockDoc = new BlockModel({
+        index: block.index,
+        timestamp: block.timestamp,
+        transactions: block.transactions,
+        previousHash: block.previousHash,
+        hash: block.hash,
+        nonce: block.nonce,
+        difficulty: block.difficulty,
+        merkleRoot: block.merkleRoot,
+        miner: minerAddress,
+        reward: blockchain.miningReward,
+        totalFees: 0,
+        transactionCount: block.transactions.length
+      });
+      await blockDoc.save();
+    } catch (dbError) {
+      // Another miner beat us to it
+      if (dbError.code === 11000) {
+        return res.status(409).json({
+          error: 'Block already mined',
+          message: `Block #${block.index} was already mined by another miner`,
+          currentBlock: blockchain.chain.length
+        });
+      }
+      throw dbError;
+    }
+
+    // Now update blockchain in memory
     blockchain.chain.push(block);
 
     // Update UTXOs
@@ -151,23 +199,6 @@ exports.submitBlock = async (req, res) => {
 
     // Clear pending transactions that were included
     blockchain.pendingTransactions = [];
-
-    // Save block to database
-    const blockDoc = new BlockModel({
-      index: block.index,
-      timestamp: block.timestamp,
-      transactions: block.transactions,
-      previousHash: block.previousHash,
-      hash: block.hash,
-      nonce: block.nonce,
-      difficulty: block.difficulty,
-      merkleRoot: block.merkleRoot,
-      miner: minerAddress,
-      reward: blockchain.miningReward,
-      totalFees: 0,
-      transactionCount: block.transactions.length
-    });
-    await blockDoc.save();
 
     // Update miner's wallet balance
     wallet.balance += blockchain.miningReward;
