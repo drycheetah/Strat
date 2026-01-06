@@ -1303,14 +1303,15 @@
                 });
                 const data = await res.json();
 
-                const html = data.transactions.length > 0
-                    ? data.transactions.map(tx => `
+                const transactions = data.transactions || [];
+                const html = transactions.length > 0
+                    ? transactions.map(tx => `
                         <div class="bg-white/5 p-4 rounded-xl">
                             <div class="flex justify-between">
-                                <div class="text-sm font-semibold">${tx.amount} STRAT</div>
+                                <div class="text-sm font-semibold">${tx.amount || 0} STRAT</div>
                                 <div class="text-xs text-gray-400">${new Date(tx.timestamp).toLocaleString()}</div>
                             </div>
-                            <div class="text-xs text-gray-500 mt-2 font-mono">${tx.hash.substring(0,40)}...</div>
+                            <div class="text-xs text-gray-500 mt-2 font-mono">${(tx.hash || 'N/A').substring(0,40)}...</div>
                         </div>
                     `).join('')
                     : '<div class="text-gray-500 text-center py-4">No bridge transactions yet</div>';
@@ -1318,6 +1319,10 @@
                 document.getElementById('bridge-history').innerHTML = html;
             } catch(e) {
                 console.error('Failed to load bridge history:', e);
+                const historyEl = document.getElementById('bridge-history');
+                if (historyEl) {
+                    historyEl.innerHTML = '<div class="text-gray-500 text-center py-4">Failed to load bridge history</div>';
+                }
             }
         }
 
@@ -1366,11 +1371,17 @@
                 const data = await res.json();
 
                 if (data.success && data.position) {
-                    document.getElementById('user-lp-tokens').textContent = data.position.lpTokens.toFixed(4);
-                    document.getElementById('user-pool-share').textContent = data.position.poolShare + '%';
-                    document.getElementById('user-sol-amount').textContent = data.position.solAmount.toFixed(4) + ' SOL';
-                    document.getElementById('user-strat-amount').textContent = data.position.stratAmount.toFixed(2) + ' STRAT';
-                    document.getElementById('user-lp-balance').textContent = data.position.lpTokens.toFixed(4);
+                    const lpTokensEl = document.getElementById('user-lp-tokens');
+                    const poolShareEl = document.getElementById('user-pool-share');
+                    const solAmountEl = document.getElementById('user-sol-amount');
+                    const stratAmountEl = document.getElementById('user-strat-amount');
+                    const lpBalanceEl = document.getElementById('user-lp-balance');
+
+                    if (lpTokensEl) lpTokensEl.textContent = data.position.lpTokens.toFixed(4);
+                    if (poolShareEl) poolShareEl.textContent = data.position.poolShare + '%';
+                    if (solAmountEl) solAmountEl.textContent = data.position.solAmount.toFixed(4) + ' SOL';
+                    if (stratAmountEl) stratAmountEl.textContent = data.position.stratAmount.toFixed(2) + ' STRAT';
+                    if (lpBalanceEl) lpBalanceEl.textContent = data.position.lpTokens.toFixed(4);
                 }
             } catch (e) {
                 console.error('Failed to load user position:', e);
@@ -1790,16 +1801,38 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    document.getElementById('analytics-hashrate').textContent = data.stats.hashrate.toFixed(2);
-                    document.getElementById('analytics-blocktime').textContent = data.stats.avgBlockTime.toFixed(1);
-                    document.getElementById('analytics-txs').textContent = data.stats.transactions24h || 0;
-                    document.getElementById('analytics-tvl').textContent = (data.stats.totalStaked || 0).toFixed(2);
+                    // Handle hashrate - could be string or number
+                    const hashrate = typeof data.stats.hashrate === 'string' ? parseFloat(data.stats.hashrate) : (data.stats.hashrate || 0);
+                    document.getElementById('analytics-hashrate').textContent = hashrate.toFixed(2);
+
+                    // Handle avgBlockTime - convert milliseconds to seconds
+                    const blockTime = (data.stats.avgBlockTime || 0) / 1000;
+                    document.getElementById('analytics-blocktime').textContent = blockTime.toFixed(1);
+
+                    // Get pending transactions count
+                    const txs24h = data.stats.pendingTransactions || 0;
+                    document.getElementById('analytics-txs').textContent = txs24h;
+
+                    // Get staked amount from staking stats
+                    try {
+                        const stakingRes = await fetch(`${API}/staking/stats`);
+                        const stakingData = await stakingRes.json();
+                        const tvl = stakingData.success ? (stakingData.stats.totalStaked || 0) : 0;
+                        document.getElementById('analytics-tvl').textContent = tvl.toFixed(2);
+                    } catch(e) {
+                        document.getElementById('analytics-tvl').textContent = '0.00';
+                    }
                 }
 
                 // Load chart data
                 await loadCharts();
             } catch(e) {
                 console.error('Failed to load analytics:', e);
+                // Set default values on error
+                document.getElementById('analytics-hashrate').textContent = '0.00';
+                document.getElementById('analytics-blocktime').textContent = '0.0';
+                document.getElementById('analytics-txs').textContent = '0';
+                document.getElementById('analytics-tvl').textContent = '0.00';
             }
         }
 
