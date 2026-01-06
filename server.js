@@ -205,6 +205,7 @@ class ProductionServer {
     this.app.use('/api/contracts', contractRoutes);
     this.app.use('/api/bridge', bridgeRoutes);
     this.app.use('/api/price', require('./routes/price.routes'));
+    this.app.use('/api/liquidity', require('./routes/liquidity.routes'));
 
     // API documentation
     this.app.get('/api', (req, res) => {

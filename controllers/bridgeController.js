@@ -2,13 +2,13 @@ const { Connection, PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const Wallet = require('../models/Wallet');
 const BridgeTransaction = require('../models/BridgeTransaction');
 const BlockModel = require('../models/Block');
+const LiquidityPool = require('../models/LiquidityPool');
 const { Transaction } = require('../src/transaction');
 const logger = require('../utils/logger');
 
 const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
 const BRIDGE_ADDRESS = process.env.BRIDGE_SOL_ADDRESS;
-const EXCHANGE_RATE = parseFloat(process.env.BRIDGE_EXCHANGE_RATE) || 10; // 1 SOL = 10 STRAT
-const BRIDGE_FEE_PERCENT = parseFloat(process.env.BRIDGE_FEE_PERCENT) || 2; // 2% bridge fee
+const BRIDGE_FEE_PERCENT = parseFloat(process.env.BRIDGE_FEE_PERCENT) || 0.3; // 0.3% AMM fee
 const BRIDGE_FEE_WALLET = process.env.BRIDGE_FEE_WALLET; // Your wallet to collect fees
 
 /**
@@ -19,12 +19,20 @@ exports.getBridgeInfo = async (req, res) => {
     if (!BRIDGE_ADDRESS) {
       return res.status(500).json({ error: 'Bridge not configured' });
     }
+
+    // Get current price from AMM pool
+    const pool = await LiquidityPool.getPool();
+    const currentRate = pool.stratReserve / pool.solReserve; // STRAT per SOL
+
     res.json({
       bridgeAddress: BRIDGE_ADDRESS,
-      exchangeRate: EXCHANGE_RATE,
+      exchangeRate: currentRate,
       bridgeFee: BRIDGE_FEE_PERCENT,
       network: 'mainnet-beta',
-      disclaimer: `${BRIDGE_FEE_PERCENT}% bridge fee applies. Send SOL to receive STRAT.`
+      solReserve: pool.solReserve,
+      stratReserve: pool.stratReserve,
+      priceUSD: pool.getPriceUSD(),
+      disclaimer: `${BRIDGE_FEE_PERCENT}% liquidity pool fee applies. Price determined by AMM.`
     });
   } catch (error) {
     logger.error(`Error getting bridge info: ${error.message}`);
@@ -129,13 +137,23 @@ exports.verifyDeposit = async (req, res) => {
     }
 
     const solReceived = lamportsReceived / LAMPORTS_PER_SOL;
-    const stratGross = solReceived * EXCHANGE_RATE;
 
-    // Calculate bridge fee
-    const bridgeFee = stratGross * (BRIDGE_FEE_PERCENT / 100);
-    const stratToCredit = stratGross - bridgeFee;
+    // Get AMM pool and execute swap
+    const pool = await LiquidityPool.getPool();
 
-    logger.info(`SOL deposit verified: ${solReceived} SOL = ${stratGross} STRAT (${bridgeFee} fee, ${stratToCredit} net)`);
+    // Calculate expected output with slippage protection (2% slippage tolerance)
+    const expectedSTRAT = pool.getAmountOut(solReceived, true);
+    const minSTRAT = expectedSTRAT * 0.98; // 2% slippage tolerance
+
+    // Execute swap through AMM
+    const swapResult = await pool.swap(solReceived, true, minSTRAT);
+    const stratToCredit = swapResult.amountOut;
+
+    // Calculate fee portion for fee wallet (from the pool fee)
+    const poolFeeCollected = solReceived * (BRIDGE_FEE_PERCENT / 100);
+    const feeInSTRAT = pool.getAmountOut(poolFeeCollected, true);
+
+    logger.info(`SOL deposit verified: ${solReceived} SOL = ${stratToCredit} STRAT (AMM rate: ${swapResult.newPrice.toFixed(4)} SOL/STRAT)`);
 
     // Check if this transaction was already processed
     const existingBridge = await BridgeTransaction.findOne({ solanaSignature: signature });
@@ -158,11 +176,11 @@ exports.verifyDeposit = async (req, res) => {
 
     // Create fee collection transaction if fee wallet is configured
     let feeTx = null;
-    if (BRIDGE_FEE_WALLET && bridgeFee > 0) {
+    if (BRIDGE_FEE_WALLET && feeInSTRAT > 0) {
       feeTx = Transaction.createCoinbaseTx(
         BRIDGE_FEE_WALLET,
         req.blockchain.chain.length,
-        bridgeFee
+        feeInSTRAT
       );
     }
 
@@ -203,7 +221,7 @@ exports.verifyDeposit = async (req, res) => {
       solanaSignature: signature,
       solAmount: solReceived,
       stratAmount: stratToCredit,
-      exchangeRate: EXCHANGE_RATE,
+      exchangeRate: stratToCredit / solReceived, // Actual rate received
       status: 'completed'
     });
     await bridgeRecord.save();
@@ -214,9 +232,11 @@ exports.verifyDeposit = async (req, res) => {
       success: true,
       solReceived,
       stratCredited: stratToCredit,
-      exchangeRate: EXCHANGE_RATE,
+      exchangeRate: stratToCredit / solReceived,
+      priceImpact: ((expectedSTRAT - stratToCredit) / expectedSTRAT * 100).toFixed(2),
+      newPrice: swapResult.newPrice,
       newBalance: wallet.balance,
-      message: `Successfully bridged ${solReceived} SOL to ${stratToCredit} STRAT`
+      message: `Successfully bridged ${solReceived} SOL to ${stratToCredit.toFixed(4)} STRAT via AMM`
     });
 
   } catch (error) {

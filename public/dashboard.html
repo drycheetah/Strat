@@ -57,6 +57,9 @@
                 <div class="nav-item" onclick="showSection('bridge')">
                     <i class="fas fa-bridge mr-3"></i> SOL Bridge
                 </div>
+                <div class="nav-item" onclick="showSection('liquidity')">
+                    <i class="fas fa-water mr-3"></i> Liquidity Pool
+                </div>
                 <div class="nav-item" onclick="showSection('buy')">
                     <i class="fas fa-shopping-cart mr-3"></i> Buy STRAT
                 </div>
@@ -303,6 +306,126 @@
                 </div>
             </div>
 
+            <!-- Liquidity Pool Section -->
+            <div id="section-liquidity" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-4xl mx-auto mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Liquidity Pool (AMM)</h2>
+
+                    <!-- Pool Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Pool TVL</div>
+                            <div class="text-2xl font-bold text-green-400" id="pool-tvl">$0</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Current Price</div>
+                            <div class="text-2xl font-bold text-purple-400" id="pool-price">$0.01</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">24h Volume</div>
+                            <div class="text-2xl font-bold text-blue-400" id="pool-volume">$0</div>
+                        </div>
+                    </div>
+
+                    <!-- Pool Reserves -->
+                    <div class="bg-purple-900/20 border border-purple-500/30 p-6 rounded-xl mb-6">
+                        <div class="text-lg font-bold mb-4">Pool Reserves</div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-gray-400">SOL Reserve</div>
+                                <div class="text-2xl font-bold text-gradient" id="pool-sol-reserve">0</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-400">STRAT Reserve</div>
+                                <div class="text-2xl font-bold text-gradient" id="pool-strat-reserve">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Your Position -->
+                    <div class="bg-green-900/20 border border-green-500/30 p-6 rounded-xl mb-6">
+                        <div class="text-lg font-bold mb-4">Your Liquidity Position</div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <div class="text-sm text-gray-400">LP Tokens</div>
+                                <div class="text-xl font-bold" id="user-lp-tokens">0</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-400">Pool Share</div>
+                                <div class="text-xl font-bold" id="user-pool-share">0%</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-gray-400">Your SOL</div>
+                                <div class="text-xl font-bold" id="user-sol-amount">0</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-400">Your STRAT</div>
+                                <div class="text-xl font-bold" id="user-strat-amount">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add/Remove Liquidity Tabs -->
+                    <div class="flex gap-4 mb-6">
+                        <button id="tab-add-liq" class="flex-1 py-3 rounded-xl font-bold btn-primary" onclick="switchLiquidityTab('add')">Add Liquidity</button>
+                        <button id="tab-remove-liq" class="flex-1 py-3 rounded-xl font-bold btn-secondary" onclick="switchLiquidityTab('remove')">Remove Liquidity</button>
+                    </div>
+
+                    <!-- Add Liquidity Form -->
+                    <div id="add-liquidity-form" class="space-y-4">
+                        <div class="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl">
+                            <i class="fas fa-info-circle text-blue-400 mr-2"></i>
+                            <span class="text-sm">Add liquidity to earn 0.3% fees on all trades proportional to your share of the pool.</span>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">SOL Amount</label>
+                            <input id="add-sol-amount" type="number" step="0.01" placeholder="0.0" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" oninput="calculateStratNeeded()">
+                            <div class="text-xs text-gray-500 mt-1">Note: For now, this is demonstration. Full SOL integration coming soon.</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">STRAT Amount</label>
+                            <input id="add-strat-amount" type="number" step="0.01" placeholder="0.0" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" readonly>
+                            <div class="text-xs text-gray-500 mt-1">Calculated based on current pool ratio</div>
+                        </div>
+                        <div class="bg-purple-900/20 p-4 rounded-xl">
+                            <div class="text-sm text-gray-400">You will receive:</div>
+                            <div class="text-2xl font-bold text-gradient" id="lp-tokens-to-receive">0 LP tokens</div>
+                        </div>
+                        <button onclick="addLiquidity()" class="w-full btn-primary py-3 rounded-xl font-bold">
+                            <i class="fas fa-plus mr-2"></i> Add Liquidity
+                        </button>
+                    </div>
+
+                    <!-- Remove Liquidity Form -->
+                    <div id="remove-liquidity-form" class="hidden space-y-4">
+                        <div class="bg-orange-900/20 border border-orange-500/30 p-4 rounded-xl">
+                            <i class="fas fa-info-circle text-orange-400 mr-2"></i>
+                            <span class="text-sm">Remove your liquidity to receive back your SOL and STRAT plus accumulated fees.</span>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">LP Tokens to Remove</label>
+                            <input id="remove-lp-amount" type="number" step="0.01" placeholder="0.0" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" oninput="calculateRemoveOutput()">
+                            <div class="text-xs text-gray-500 mt-1">Your balance: <span id="user-lp-balance">0</span> LP tokens</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-purple-900/20 p-4 rounded-xl">
+                                <div class="text-sm text-gray-400">SOL to receive</div>
+                                <div class="text-xl font-bold text-gradient" id="remove-sol-output">0</div>
+                            </div>
+                            <div class="bg-purple-900/20 p-4 rounded-xl">
+                                <div class="text-sm text-gray-400">STRAT to receive</div>
+                                <div class="text-xl font-bold text-gradient" id="remove-strat-output">0</div>
+                            </div>
+                        </div>
+                        <button onclick="removeLiquidity()" class="w-full btn-secondary py-3 rounded-xl font-bold">
+                            <i class="fas fa-minus mr-2"></i> Remove Liquidity
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Buy STRAT Section -->
             <div id="section-buy" class="hidden">
                 <div class="glass p-8 rounded-2xl max-w-3xl mx-auto">
@@ -332,11 +455,11 @@
                     <div class="space-y-6">
                         <div>
                             <label class="block text-sm text-gray-400 mb-2">Payment Method</label>
-                            <select id="buy-method" class="w-full px-4 py-3 rounded-xl">
-                                <option value="solana">Solana (SOL) - Use Bridge Instead</option>
-                                <option value="crypto" selected>Cryptocurrency (Coming Soon)</option>
-                                <option value="card">Credit/Debit Card (Coming Soon)</option>
-                                <option value="paypal">PayPal (Coming Soon)</option>
+                            <select id="buy-method" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+                                <option value="solana" class="bg-gray-900 text-white">Solana (SOL) - Use Bridge Instead</option>
+                                <option value="crypto" selected class="bg-gray-900 text-white">Cryptocurrency (Coming Soon)</option>
+                                <option value="card" class="bg-gray-900 text-white">Credit/Debit Card (Coming Soon)</option>
+                                <option value="paypal" class="bg-gray-900 text-white">PayPal (Coming Soon)</option>
                             </select>
                         </div>
 
@@ -914,6 +1037,180 @@
 
         // Load bridge info on startup
         loadBridgeInfo();
+
+        // Liquidity pool functions
+        let poolData = null;
+
+        async function loadPoolInfo() {
+            try {
+                const res = await fetch(`${API}/liquidity/pool`);
+                const data = await res.json();
+
+                if (data.success && data.pool) {
+                    poolData = data.pool;
+
+                    const tvl = (data.pool.solReserve * 140) + (data.pool.stratReserve * data.pool.priceUSD);
+                    document.getElementById('pool-tvl').textContent = '$' + tvl.toFixed(2);
+                    document.getElementById('pool-price').textContent = '$' + data.pool.priceUSD.toFixed(6);
+                    document.getElementById('pool-volume').textContent = '$' + (data.pool.volume24h * 140).toFixed(2);
+                    document.getElementById('pool-sol-reserve').textContent = data.pool.solReserve.toFixed(4) + ' SOL';
+                    document.getElementById('pool-strat-reserve').textContent = data.pool.stratReserve.toFixed(2) + ' STRAT';
+                }
+            } catch (e) {
+                console.error('Failed to load pool info:', e);
+            }
+        }
+
+        async function loadUserPosition() {
+            try {
+                const res = await fetch(`${API}/liquidity/position`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (data.success && data.position) {
+                    document.getElementById('user-lp-tokens').textContent = data.position.lpTokens.toFixed(4);
+                    document.getElementById('user-pool-share').textContent = data.position.poolShare + '%';
+                    document.getElementById('user-sol-amount').textContent = data.position.solAmount.toFixed(4) + ' SOL';
+                    document.getElementById('user-strat-amount').textContent = data.position.stratAmount.toFixed(2) + ' STRAT';
+                    document.getElementById('user-lp-balance').textContent = data.position.lpTokens.toFixed(4);
+                }
+            } catch (e) {
+                console.error('Failed to load user position:', e);
+            }
+        }
+
+        function switchLiquidityTab(tab) {
+            if (tab === 'add') {
+                document.getElementById('tab-add-liq').classList.remove('btn-secondary');
+                document.getElementById('tab-add-liq').classList.add('btn-primary');
+                document.getElementById('tab-remove-liq').classList.remove('btn-primary');
+                document.getElementById('tab-remove-liq').classList.add('btn-secondary');
+                document.getElementById('add-liquidity-form').classList.remove('hidden');
+                document.getElementById('remove-liquidity-form').classList.add('hidden');
+            } else {
+                document.getElementById('tab-remove-liq').classList.remove('btn-secondary');
+                document.getElementById('tab-remove-liq').classList.add('btn-primary');
+                document.getElementById('tab-add-liq').classList.remove('btn-primary');
+                document.getElementById('tab-add-liq').classList.add('btn-secondary');
+                document.getElementById('remove-liquidity-form').classList.remove('hidden');
+                document.getElementById('add-liquidity-form').classList.add('hidden');
+            }
+        }
+
+        function calculateStratNeeded() {
+            const solAmount = parseFloat(document.getElementById('add-sol-amount').value) || 0;
+            if (!poolData || solAmount <= 0) {
+                document.getElementById('add-strat-amount').value = '';
+                document.getElementById('lp-tokens-to-receive').textContent = '0 LP tokens';
+                return;
+            }
+
+            const ratio = poolData.stratReserve / poolData.solReserve;
+            const stratNeeded = solAmount * ratio;
+            document.getElementById('add-strat-amount').value = stratNeeded.toFixed(4);
+
+            const lpTokens = Math.sqrt(solAmount * stratNeeded);
+            document.getElementById('lp-tokens-to-receive').textContent = lpTokens.toFixed(4) + ' LP tokens';
+        }
+
+        function calculateRemoveOutput() {
+            const lpTokens = parseFloat(document.getElementById('remove-lp-amount').value) || 0;
+            if (!poolData || lpTokens <= 0) {
+                document.getElementById('remove-sol-output').textContent = '0';
+                document.getElementById('remove-strat-output').textContent = '0';
+                return;
+            }
+
+            const share = lpTokens / poolData.totalLPTokens;
+            const solOut = poolData.solReserve * share;
+            const stratOut = poolData.stratReserve * share;
+
+            document.getElementById('remove-sol-output').textContent = solOut.toFixed(4) + ' SOL';
+            document.getElementById('remove-strat-output').textContent = stratOut.toFixed(2) + ' STRAT';
+        }
+
+        async function addLiquidity() {
+            try {
+                const solAmount = parseFloat(document.getElementById('add-sol-amount').value);
+                const stratAmount = parseFloat(document.getElementById('add-strat-amount').value);
+
+                if (!solAmount || !stratAmount || solAmount <= 0 || stratAmount <= 0) {
+                    alert('Please enter valid amounts');
+                    return;
+                }
+
+                const res = await fetch(`${API}/liquidity/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ solAmount, stratAmount })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`Success! You received ${data.lpTokens.toFixed(4)} LP tokens\nPool share: ${data.poolShare}%`);
+                    document.getElementById('add-sol-amount').value = '';
+                    document.getElementById('add-strat-amount').value = '';
+                    await loadPoolInfo();
+                    await loadUserPosition();
+                    await loadDashboard();
+                } else {
+                    alert('Error: ' + (data.message || data.error));
+                }
+            } catch (e) {
+                console.error('Add liquidity error:', e);
+                alert('Failed to add liquidity: ' + e.message);
+            }
+        }
+
+        async function removeLiquidity() {
+            try {
+                const lpTokens = parseFloat(document.getElementById('remove-lp-amount').value);
+
+                if (!lpTokens || lpTokens <= 0) {
+                    alert('Please enter valid LP token amount');
+                    return;
+                }
+
+                const res = await fetch(`${API}/liquidity/remove`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ lpTokens })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`Success! Received:\n${data.solReturned.toFixed(4)} SOL\n${data.stratReturned.toFixed(2)} STRAT`);
+                    document.getElementById('remove-lp-amount').value = '';
+                    await loadPoolInfo();
+                    await loadUserPosition();
+                    await loadDashboard();
+                } else {
+                    alert('Error: ' + (data.message || data.error));
+                }
+            } catch (e) {
+                console.error('Remove liquidity error:', e);
+                alert('Failed to remove liquidity: ' + e.message);
+            }
+        }
+
+        // Load pool info when switching to liquidity section
+        const originalShowSection = showSection;
+        showSection = function(name) {
+            originalShowSection(name);
+            if (name === 'liquidity') {
+                loadPoolInfo();
+                loadUserPosition();
+            }
+        };
 
         setInterval(loadDashboard, 10000);
     </script>

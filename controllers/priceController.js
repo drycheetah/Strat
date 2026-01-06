@@ -1,4 +1,5 @@
 const Price = require('../models/Price');
+const LiquidityPool = require('../models/LiquidityPool');
 const logger = require('../utils/logger');
 
 /**
@@ -6,7 +7,28 @@ const logger = require('../utils/logger');
  */
 const getCurrentPrice = async (req, res) => {
   try {
+    // Get real-time price from AMM pool
+    const pool = await LiquidityPool.getPool();
+    const currentPriceUSD = pool.getPriceUSD();
+
     const price = await Price.getCurrent();
+
+    // Update price from AMM
+    const oldPrice = price.priceUSD;
+    price.priceUSD = currentPriceUSD;
+
+    // Calculate 24h change
+    if (oldPrice > 0) {
+      price.priceChange24h = currentPriceUSD - oldPrice;
+      price.priceChangePercent24h = ((currentPriceUSD - oldPrice) / oldPrice) * 100;
+    }
+
+    // Update high/low
+    price.high24h = Math.max(price.high24h, currentPriceUSD);
+    price.low24h = price.low24h === 0 ? currentPriceUSD : Math.min(price.low24h, currentPriceUSD);
+
+    // Update volume from pool
+    price.volume24h = pool.volume24h;
 
     // Update circulating supply from blockchain
     if (req.blockchain) {
@@ -18,8 +40,10 @@ const getCurrentPrice = async (req, res) => {
       price.circulatingSupply = totalSupply;
       price.totalSupply = totalSupply;
       price.marketCap = totalSupply * price.priceUSD;
-      await price.save();
     }
+
+    price.lastUpdated = Date.now();
+    await price.save();
 
     res.json({
       success: true,
@@ -33,6 +57,8 @@ const getCurrentPrice = async (req, res) => {
         low24h: price.low24h,
         circulatingSupply: price.circulatingSupply,
         totalSupply: price.totalSupply,
+        solReserve: pool.solReserve,
+        stratReserve: pool.stratReserve,
         lastUpdated: price.lastUpdated
       }
     });
