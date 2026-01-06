@@ -48,29 +48,49 @@ const liquidityPoolSchema = new mongoose.Schema({
 liquidityPoolSchema.statics.syncSOLReserve = async function(blockchain) {
   const BRIDGE_ADDRESS = process.env.BRIDGE_SOL_ADDRESS;
 
-  if (!BRIDGE_ADDRESS) {
-    throw new Error('Bridge address not configured');
-  }
-
-  const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
-  const bridgePubkey = new PublicKey(BRIDGE_ADDRESS);
-
-  // Get actual SOL balance from Solana blockchain
-  const balance = await connection.getBalance(bridgePubkey);
-  const solBalance = balance / LAMPORTS_PER_SOL;
-
-  // Calculate STRAT reserve from actual blockchain circulating supply
-  let stratCirculating = 0;
-  if (blockchain && blockchain.utxos) {
-    for (let [key, utxo] of blockchain.utxos) {
-      stratCirculating += utxo.amount;
+  // If bridge not configured, return zero balances
+  if (!BRIDGE_ADDRESS || BRIDGE_ADDRESS === 'undefined' || BRIDGE_ADDRESS.trim() === '') {
+    // Calculate STRAT supply from blockchain
+    let stratCirculating = 0;
+    if (blockchain && blockchain.utxos) {
+      for (let [key, utxo] of blockchain.utxos) {
+        stratCirculating += utxo.amount;
+      }
     }
+    return { solReserve: 0, stratReserve: stratCirculating };
   }
 
-  return {
-    solReserve: solBalance,
-    stratReserve: stratCirculating
-  };
+  try {
+    const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+    const bridgePubkey = new PublicKey(BRIDGE_ADDRESS.trim());
+
+    // Get actual SOL balance from Solana blockchain
+    const balance = await connection.getBalance(bridgePubkey);
+    const solBalance = balance / LAMPORTS_PER_SOL;
+
+    // Calculate STRAT reserve from actual blockchain circulating supply
+    let stratCirculating = 0;
+    if (blockchain && blockchain.utxos) {
+      for (let [key, utxo] of blockchain.utxos) {
+        stratCirculating += utxo.amount;
+      }
+    }
+
+    return {
+      solReserve: solBalance,
+      stratReserve: stratCirculating
+    };
+  } catch (error) {
+    // If Solana connection fails, return zero SOL but still calculate STRAT
+    console.error('Failed to sync SOL reserve:', error.message);
+    let stratCirculating = 0;
+    if (blockchain && blockchain.utxos) {
+      for (let [key, utxo] of blockchain.utxos) {
+        stratCirculating += utxo.amount;
+      }
+    }
+    return { solReserve: 0, stratReserve: stratCirculating };
+  }
 };
 
 // Get current pool (singleton pattern) - SYNCED WITH REAL BALANCES
