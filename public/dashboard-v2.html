@@ -2891,6 +2891,170 @@
         if (currentSection === 'social') {
             loadSocialData();
         }
+
+        // Mining Functions
+        let isMining = false;
+        let miningChart;
+
+        function initializeMiningChart() {
+            const ctx = document.getElementById('miningChart')?.getContext('2d');
+            if (!ctx) return;
+
+            miningChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 12}, (_, i) => `${i*2}h`),
+                    datasets: [{
+                        label: 'Hashrate',
+                        data: Array.from({length: 12}, () => Math.random() * 1000 + 500),
+                        borderColor: '#14f195',
+                        backgroundColor: 'rgba(20, 241, 149, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            ticks: { color: '#a0a0b0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#a0a0b0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function toggleMining() {
+            isMining = !isMining;
+            const btn = document.getElementById('miningBtn');
+            const status = document.getElementById('miningStatus');
+
+            if (isMining) {
+                btn.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop Mining';
+                btn.className = 'btn btn-secondary w-full';
+                status.textContent = 'Active';
+                status.className = 'text-2xl font-bold text-green-400';
+                document.getElementById('hashRate').textContent = '850 H/s';
+                showToast('Mining started!', 'success');
+            } else {
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i> Start Mining';
+                btn.className = 'btn btn-primary w-full';
+                status.textContent = 'Stopped';
+                status.className = 'text-2xl font-bold text-blue-400';
+                document.getElementById('hashRate').textContent = '0 H/s';
+                showToast('Mining stopped', 'info');
+            }
+        }
+
+        // Staking Functions
+        let stakes = [];
+
+        async function stakeTokens() {
+            const amount = document.getElementById('stakeAmount').value;
+            const period = document.getElementById('stakeLockPeriod').value;
+
+            if (!amount || parseFloat(amount) <= 0) {
+                showToast('Please enter a valid amount', 'error');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/staking/stake', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ amount, lockPeriod: period })
+                });
+
+                if (response.ok) {
+                    showToast('Tokens staked successfully!', 'success');
+                    document.getElementById('stakeAmount').value = '';
+                    loadStakes();
+                } else {
+                    throw new Error('Staking failed');
+                }
+            } catch (error) {
+                console.error('Error staking:', error);
+                showToast('Error staking tokens. Please try again.', 'error');
+            }
+        }
+
+        function loadStakes() {
+            stakes = [
+                { id: 1, amount: 5000, period: 90, apy: 7, startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), rewards: 87.5 },
+                { id: 2, amount: 10000, period: 180, apy: 10, startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), rewards: 328.8 }
+            ];
+
+            renderStakes();
+        }
+
+        function renderStakes() {
+            const container = document.getElementById('stakesList');
+            if (!stakes || stakes.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-4">No active stakes</div>';
+                return;
+            }
+
+            container.innerHTML = stakes.map(stake => {
+                const daysLeft = stake.period - Math.floor((Date.now() - stake.startDate) / (24 * 60 * 60 * 1000));
+                return `
+                    <div class="p-4 bg-gray-800 bg-opacity-30 rounded">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-bold">${stake.amount} STRAT</span>
+                            <span class="text-green-400">${stake.apy}% APY</span>
+                        </div>
+                        <div class="text-sm text-gray-400 mb-2">
+                            Rewards: ${stake.rewards.toFixed(2)} STRAT
+                        </div>
+                        <div class="text-sm text-gray-400 mb-2">
+                            ${daysLeft} days remaining
+                        </div>
+                        <button onclick="unstake(${stake.id})" class="btn btn-secondary w-full text-sm py-1">
+                            Unstake
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function unstake(stakeId) {
+            if (!confirm('Unstake tokens? Early unstaking may incur penalties.')) return;
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/staking/unstake/${stakeId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showToast('Tokens unstaked successfully!', 'success');
+                    stakes = stakes.filter(s => s.id !== stakeId);
+                    renderStakes();
+                }
+            } catch (error) {
+                console.error('Error unstaking:', error);
+                showToast('Error unstaking tokens', 'error');
+            }
+        }
+
+        if (currentSection === 'mining') {
+            initializeMiningChart();
+        }
+
+        if (currentSection === 'staking') {
+            loadStakes();
+        }
     </script>
 </body>
 </html>
