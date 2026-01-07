@@ -419,3 +419,56 @@ exports.getStakingInfo = (req, res) => {
     }))
   });
 };
+
+/**
+ * Get top stakers leaderboard
+ */
+exports.getTopStakers = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Aggregate stakes by address to get total staked and rewards per address
+    const topStakers = await Stake.aggregate([
+      {
+        $match: {
+          status: { $in: ['active', 'unlocked'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$address',
+          totalStaked: { $sum: '$amount' },
+          totalRewards: { $sum: '$rewards' },
+          stakeCount: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { totalStaked: -1 }
+      },
+      {
+        $limit: limit
+      },
+      {
+        $project: {
+          _id: 0,
+          address: '$_id',
+          staked: '$totalStaked',
+          rewards: '$totalRewards',
+          stakeCount: 1
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      stakers: topStakers,
+      count: topStakers.length
+    });
+  } catch (error) {
+    console.error('Get top stakers error:', error);
+    res.status(500).json({
+      error: 'Failed to get top stakers',
+      message: error.message
+    });
+  }
+};

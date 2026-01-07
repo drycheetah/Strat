@@ -2092,30 +2092,27 @@
                         document.getElementById('miners-list').innerHTML = '<div class="text-center text-gray-400 py-8">No miners found. Start mining to appear on the leaderboard!</div>';
                     }
                 } else if (currentLeaderboard === 'stakers') {
-                    const res = await fetch(`${API}/staking/stats`);
+                    const res = await fetch(`${API}/staking/leaderboard?limit=10`);
                     const data = await res.json();
 
-                    // Mock data for now
-                    const mockStakers = Array.from({length: 10}, (_, i) => ({
-                        address: 'STRAT' + Math.random().toString(36).substring(2, 15),
-                        staked: (1000 - i * 50) + Math.random() * 100,
-                        rewards: (50 - i * 3) + Math.random() * 10
-                    }));
-
-                    const html = mockStakers.map((staker, idx) => `
-                        <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
-                            <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
-                            <div class="flex-1">
-                                <div class="font-mono text-sm">${staker.address.substring(0, 16)}...</div>
-                                <div class="text-xs text-gray-400">${staker.staked.toFixed(2)} STRAT staked</div>
+                    if (data.success && data.stakers && data.stakers.length > 0) {
+                        const html = data.stakers.map((staker, idx) => `
+                            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
+                                <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
+                                <div class="flex-1">
+                                    <div class="font-mono text-sm">${staker.address.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-400">${staker.staked.toFixed(2)} STRAT staked</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-purple-400">${staker.rewards.toFixed(2)} STRAT</div>
+                                    <div class="text-xs text-gray-500">Rewards</div>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <div class="text-lg font-bold text-purple-400">${staker.rewards.toFixed(2)} STRAT</div>
-                                <div class="text-xs text-gray-500">Rewards</div>
-                            </div>
-                        </div>
-                    `).join('');
-                    document.getElementById('stakers-list').innerHTML = html;
+                        `).join('');
+                        document.getElementById('stakers-list').innerHTML = html;
+                    } else {
+                        document.getElementById('stakers-list').innerHTML = '<div class="text-center text-gray-400 py-8">No stakers found. Create a stake to appear on the leaderboard!</div>';
+                    }
                 } else if (currentLeaderboard === 'holders') {
                     const res = await fetch(`${API}/explorer/richlist?limit=10`);
                     const data = await res.json();

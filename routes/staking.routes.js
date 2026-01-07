@@ -8,6 +8,9 @@ router.get('/info', stakingController.getStakingInfo);
 // Get global staking statistics
 router.get('/stats', stakingController.getGlobalStats);
 
+// Get top stakers leaderboard
+router.get('/leaderboard', stakingController.getTopStakers);
+
 // Create a new stake
 router.post('/stake', stakingController.createStake);
 
