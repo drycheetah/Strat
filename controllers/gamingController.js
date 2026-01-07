@@ -509,7 +509,7 @@ exports.generateRandom = async (req, res) => {
       session.rng.nonce || 0,
       min,
       max
-    });
+    );
 
     res.json(result);
   } catch (error) {
