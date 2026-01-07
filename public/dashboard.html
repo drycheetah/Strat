@@ -2648,36 +2648,40 @@
 
         async function loadNFTMarketplace() {
             try {
-                const res = await fetch(`${API}/nft/marketplace?page=1&limit=12`);
+                const res = await fetch(`${API}/nft/listings?limit=12`);
                 const data = await res.json();
 
-                if (data.success && data.nfts && data.nfts.length > 0) {
-                    const html = data.nfts.map(nft => `
+                if (data.success && data.listings && data.listings.length > 0) {
+                    const html = data.listings.map(listing => `
                         <div class="glass p-4 rounded-xl">
                             <div class="bg-gray-800 h-48 rounded-lg mb-4 flex items-center justify-center">
                                 <i class="fas fa-image text-4xl text-gray-600"></i>
                             </div>
-                            <h4 class="font-bold mb-2">${nft.name || 'Unnamed NFT'}</h4>
-                            <p class="text-sm text-gray-400 mb-3">${(nft.description || '').substring(0, 60)}...</p>
+                            <h4 class="font-bold mb-2">${listing.nft ? listing.nft.name : 'NFT #' + listing.tokenId}</h4>
+                            <p class="text-sm text-gray-400 mb-3">${listing.nft ? listing.nft.collection : ''}</p>
                             <div class="flex justify-between items-center">
-                                <span class="text-green-400 font-bold">${nft.price || 0} STRAT</span>
-                                <button onclick="buyNFT('${nft._id}')" class="btn-primary px-4 py-2 rounded-lg text-sm">Buy</button>
+                                <span class="text-green-400 font-bold">${listing.price} STRAT</span>
+                                <button onclick="buyNFT('${listing.tokenId}')" class="btn-primary px-4 py-2 rounded-lg text-sm">Buy</button>
                             </div>
                         </div>
                     `).join('');
                     document.getElementById('nft-grid').innerHTML = html;
                 } else {
-                    document.getElementById('nft-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">No NFTs listed yet</div>';
+                    document.getElementById('nft-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">No NFTs listed yet. Mint your first NFT!</div>';
                 }
             } catch(e) {
                 console.error('Failed to load NFT marketplace:', e);
+                document.getElementById('nft-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">Error loading marketplace</div>';
             }
         }
 
         async function loadMyNFTs() {
-            if (!walletData) return;
+            if (!walletData) {
+                document.getElementById('nft-collection-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">Please connect your wallet first</div>';
+                return;
+            }
             try {
-                const res = await fetch(`${API}/nft/collection/${walletData.address}`);
+                const res = await fetch(`${API}/nft/user/${walletData.address}`);
                 const data = await res.json();
 
                 if (data.success && data.nfts && data.nfts.length > 0) {
@@ -2687,49 +2691,61 @@
                                 <i class="fas fa-image text-4xl text-gray-600"></i>
                             </div>
                             <h4 class="font-bold mb-2">${nft.name}</h4>
-                            <p class="text-sm text-gray-400 mb-3">${nft.tokenId}</p>
-                            <button onclick="listNFTForSale('${nft._id}')" class="btn-primary w-full py-2 rounded-lg text-sm">List for Sale</button>
+                            <p class="text-sm text-gray-400 mb-3">Token ID: ${nft.tokenId}</p>
+                            <button onclick="listNFTForSale('${nft.tokenId}')" class="btn-primary w-full py-2 rounded-lg text-sm">List for Sale</button>
                         </div>
                     `).join('');
                     document.getElementById('nft-collection-grid').innerHTML = html;
                 } else {
-                    document.getElementById('nft-collection-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">You don\'t own any NFTs yet</div>';
+                    document.getElementById('nft-collection-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">You don\'t own any NFTs yet. Mint one to get started!</div>';
                 }
             } catch(e) {
                 console.error('Failed to load NFT collection:', e);
+                document.getElementById('nft-collection-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">Error loading collection</div>';
             }
         }
 
         async function mintNFT() {
+            if (!walletData) {
+                return alert('Please connect your wallet first');
+            }
+
             const name = document.getElementById('nft-name').value;
             const description = document.getElementById('nft-description').value;
             const image = document.getElementById('nft-image').value;
             const royalty = document.getElementById('nft-royalty').value || 0;
 
             if (!name || !image) {
-                return showNotification('Please fill in NFT name and image', 'error');
+                return alert('Please fill in NFT name and image');
             }
 
             try {
                 const res = await fetch(`${API}/nft/mint`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ name, description, image, royaltyPercent: parseFloat(royalty) })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        creator: walletData.address,
+                        name,
+                        description,
+                        image,
+                        royaltyPercent: parseFloat(royalty)
+                    })
                 });
                 const data = await res.json();
 
                 if (data.success) {
-                    showNotification('NFT minted successfully!', 'success');
+                    alert('NFT minted successfully!');
                     document.getElementById('nft-name').value = '';
                     document.getElementById('nft-description').value = '';
                     document.getElementById('nft-image').value = '';
                     document.getElementById('nft-royalty').value = '';
                     showNFTTab('collection');
                 } else {
-                    showNotification(data.error || 'Failed to mint NFT', 'error');
+                    alert(data.message || data.error || 'Failed to mint NFT');
                 }
             } catch(e) {
-                showNotification('Error minting NFT', 'error');
+                console.error('Error minting NFT:', e);
+                alert('Error minting NFT: ' + e.message);
             }
         }
 
