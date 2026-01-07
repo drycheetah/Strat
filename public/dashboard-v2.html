@@ -953,6 +953,169 @@
             </div>
         </div>
 
+        <!-- DeFi Dashboard Section -->
+        <div id="defi" class="section">
+            <h2 class="text-3xl font-bold mb-6">DeFi Dashboard</h2>
+
+            <!-- DeFi Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Total Value Locked</div>
+                    <div class="text-2xl font-bold" id="tvl">$0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Your Liquidity</div>
+                    <div class="text-2xl font-bold text-blue-400" id="yourLiquidity">0 STRAT</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Farming Rewards</div>
+                    <div class="text-2xl font-bold text-green-400" id="farmingRewards">0 STRAT</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Lending APY</div>
+                    <div class="text-2xl font-bold text-purple-400" id="lendingAPY">0%</div>
+                </div>
+            </div>
+
+            <!-- Liquidity Pools -->
+            <div class="card mb-6">
+                <h3 class="text-xl font-bold mb-4">Liquidity Pools</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="liquidityPools">
+                    <!-- Pools will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Yield Farming -->
+            <div class="card mb-6">
+                <h3 class="text-xl font-bold mb-4">Yield Farming</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="farmingPools">
+                    <!-- Farming pools will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Lending/Borrowing -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Lending</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Amount to Lend</label>
+                            <input type="number" id="lendAmount" placeholder="0.00 STRAT">
+                        </div>
+                        <div class="bg-gray-800 bg-opacity-30 rounded-lg p-4">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm text-gray-400">Current APY</span>
+                                <span class="font-bold text-green-400">8.5%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-400">Est. Annual Earnings</span>
+                                <span class="font-bold" id="lendEarnings">0 STRAT</span>
+                            </div>
+                        </div>
+                        <button onclick="lendTokens()" class="btn btn-primary w-full">Lend STRAT</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Borrowing</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Amount to Borrow</label>
+                            <input type="number" id="borrowAmount" placeholder="0.00 STRAT">
+                        </div>
+                        <div class="bg-gray-800 bg-opacity-30 rounded-lg p-4">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm text-gray-400">Borrow APR</span>
+                                <span class="font-bold text-red-400">12.3%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-400">Collateral Required</span>
+                                <span class="font-bold" id="collateralRequired">0 STRAT</span>
+                            </div>
+                        </div>
+                        <button onclick="borrowTokens()" class="btn btn-primary w-full">Borrow STRAT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Smart Contract Deployer Section -->
+        <div id="contracts" class="section">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-3xl font-bold">Smart Contract Deployer</h2>
+                <button onclick="openContractTemplates()" class="btn btn-secondary">
+                    <i class="fas fa-book mr-2"></i> Templates
+                </button>
+            </div>
+
+            <!-- Contract Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Your Contracts</div>
+                    <div class="text-2xl font-bold" id="yourContracts">0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Total Deployed</div>
+                    <div class="text-2xl font-bold text-blue-400" id="totalContracts">0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Gas Saved</div>
+                    <div class="text-2xl font-bold text-green-400" id="gasSaved">0%</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Success Rate</div>
+                    <div class="text-2xl font-bold text-purple-400" id="successRate">100%</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Contract Editor -->
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Contract Code</h3>
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-400 mb-2">Contract Name</label>
+                        <input type="text" id="contractName" placeholder="MyContract">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-400 mb-2">Contract Type</label>
+                        <select id="contractType" onchange="loadContractTemplate()">
+                            <option value="token">ERC-20 Token</option>
+                            <option value="nft">ERC-721 NFT</option>
+                            <option value="multisig">Multi-Signature Wallet</option>
+                            <option value="dao">DAO Contract</option>
+                            <option value="custom">Custom Contract</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-400 mb-2">Contract Code</label>
+                        <textarea id="contractCode" rows="12" class="font-mono text-sm" placeholder="// Enter your smart contract code here"></textarea>
+                    </div>
+                    <button onclick="compileContract()" class="btn btn-secondary w-full mb-2">
+                        <i class="fas fa-cog mr-2"></i> Compile
+                    </button>
+                    <button onclick="deployContract()" class="btn btn-primary w-full">
+                        <i class="fas fa-rocket mr-2"></i> Deploy Contract
+                    </button>
+                </div>
+
+                <!-- Compilation Output -->
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Compilation Output</h3>
+                    <div id="compilationOutput" class="bg-gray-900 rounded-lg p-4 h-96 overflow-y-auto font-mono text-sm">
+                        <div class="text-gray-400">No compilation yet. Click "Compile" to start.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deployed Contracts -->
+            <div class="card">
+                <h3 class="text-xl font-bold mb-4">Your Deployed Contracts</h3>
+                <div id="deployedContracts" class="space-y-4">
+                    <!-- Contracts will be listed here -->
+                </div>
+            </div>
+        </div>
+
         <!-- Wallet Section -->
         <div id="wallet" class="section">
             <h2 class="text-3xl font-bold mb-6">My Wallet</h2>
