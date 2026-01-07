@@ -1,0 +1,245 @@
+name: Deploy STRAT Smart Contract
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'contracts/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to deploy to'
+        required: true
+        default: 'testnet'
+        type: choice
+        options:
+          - testnet
+          - mainnet
+
+env:
+  NODE_VERSION: '18.x'
+
+jobs:
+  lint-and-test:
+    name: Lint and Test Contracts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Compile contracts
+        run: npm run compile
+
+      - name: Run tests
+        run: npm test
+
+      - name: Generate coverage report
+        run: npm run coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: smart-contracts
+
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Slither analysis
+        uses: crytic/slither-action@v0.3.0
+        with:
+          target: 'contracts/'
+          slither-args: '--filter-paths "node_modules|test"'
+
+      - name: Run MythX security analysis
+        run: |
+          npm install -g truffle-security
+          truffle run verify
+
+  deploy-testnet:
+    name: Deploy to Testnet
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security-scan]
+    if: github.ref == 'refs/heads/develop' || github.event.inputs.network == 'testnet'
+    environment: testnet
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to STRAT Testnet
+        env:
+          PRIVATE_KEY: ${{ secrets.TESTNET_PRIVATE_KEY }}
+          STRAT_RPC_URL: ${{ secrets.STRAT_TESTNET_RPC }}
+          ETHERSCAN_API_KEY: ${{ secrets.STRAT_EXPLORER_API_KEY }}
+        run: |
+          npx hardhat deploy --network strat-testnet
+          npx hardhat verify --network strat-testnet
+
+      - name: Save deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: testnet-deployment
+          path: deployments/strat-testnet/
+
+      - name: Comment deployment info on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const deployment = JSON.parse(fs.readFileSync('deployments/strat-testnet/deployment.json'));
+            const comment = `### ✅ Testnet Deployment Successful
+
+            **Contract Address:** \`${deployment.address}\`
+            **Transaction:** \`${deployment.transactionHash}\`
+            **Network:** STRAT Testnet
+            **Gas Used:** ${deployment.gasUsed}
+
+            [View on Explorer](https://testnet.stratscan.io/address/${deployment.address})`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  deploy-mainnet:
+    name: Deploy to Mainnet
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security-scan]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.network == 'mainnet'
+    environment: mainnet
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to STRAT Mainnet
+        env:
+          PRIVATE_KEY: ${{ secrets.MAINNET_PRIVATE_KEY }}
+          STRAT_RPC_URL: ${{ secrets.STRAT_MAINNET_RPC }}
+          ETHERSCAN_API_KEY: ${{ secrets.STRAT_EXPLORER_API_KEY }}
+        run: |
+          npx hardhat deploy --network strat-mainnet
+          npx hardhat verify --network strat-mainnet
+
+      - name: Save deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mainnet-deployment
+          path: deployments/strat-mainnet/
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Mainnet Deployment v${{ github.run_number }}
+          body: |
+            ## STRAT Smart Contract Deployment
+
+            Deployed to STRAT Mainnet
+
+            See artifacts for deployment details.
+          draft: false
+          prerelease: false
+
+      - name: Notify Discord
+        uses: sarisia/actions-status-discord@v1
+        if: always()
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "STRAT Mainnet Deployment"
+          description: "Smart contracts deployed to mainnet"
+          color: 0x00ff00
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: deploy-testnet
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download deployment artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: testnet-deployment
+          path: deployments/strat-testnet/
+
+      - name: Run integration tests
+        env:
+          STRAT_RPC_URL: ${{ secrets.STRAT_TESTNET_RPC }}
+        run: npm run test:integration
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: integration-test-results
+          path: test-results/
