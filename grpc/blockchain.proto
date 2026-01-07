@@ -1,0 +1,496 @@
+syntax = "proto3";
+
+package strat.blockchain;
+
+// Blockchain Service
+service BlockchainService {
+  // Get blockchain info
+  rpc GetBlockchainInfo(Empty) returns (BlockchainInfo);
+
+  // Get block by height or hash
+  rpc GetBlock(GetBlockRequest) returns (Block);
+
+  // Get blocks with pagination
+  rpc GetBlocks(GetBlocksRequest) returns (stream Block);
+
+  // Get latest blocks
+  rpc GetLatestBlocks(GetLatestBlocksRequest) returns (BlockList);
+
+  // Subscribe to new blocks
+  rpc SubscribeNewBlocks(Empty) returns (stream Block);
+}
+
+// Transaction Service
+service TransactionService {
+  // Get transaction by ID
+  rpc GetTransaction(GetTransactionRequest) returns (Transaction);
+
+  // Get transactions for address
+  rpc GetTransactions(GetTransactionsRequest) returns (stream Transaction);
+
+  // Create and submit transaction
+  rpc CreateTransaction(CreateTransactionRequest) returns (Transaction);
+
+  // Submit raw transaction
+  rpc SubmitTransaction(SubmitTransactionRequest) returns (TransactionResponse);
+
+  // Get pending transactions
+  rpc GetPendingTransactions(GetPendingTransactionsRequest) returns (stream Transaction);
+
+  // Subscribe to new transactions
+  rpc SubscribeNewTransactions(SubscribeTransactionsRequest) returns (stream Transaction);
+}
+
+// Wallet Service
+service WalletService {
+  // Get wallet balance
+  rpc GetBalance(GetBalanceRequest) returns (Balance);
+
+  // Get wallet info
+  rpc GetWallet(GetWalletRequest) returns (Wallet);
+
+  // Create new wallet
+  rpc CreateWallet(CreateWalletRequest) returns (Wallet);
+
+  // Get UTXOs for address
+  rpc GetUTXOs(GetUTXOsRequest) returns (stream UTXO);
+}
+
+// Smart Contract Service
+service SmartContractService {
+  // Deploy smart contract
+  rpc DeployContract(DeployContractRequest) returns (Contract);
+
+  // Execute contract method
+  rpc ExecuteContract(ExecuteContractRequest) returns (ContractExecution);
+
+  // Get contract info
+  rpc GetContract(GetContractRequest) returns (Contract);
+
+  // Get contract state
+  rpc GetContractState(GetContractStateRequest) returns (ContractState);
+
+  // Subscribe to contract events
+  rpc SubscribeContractEvents(SubscribeContractEventsRequest) returns (stream ContractEvent);
+}
+
+// Mining Service
+service MiningService {
+  // Get mining info
+  rpc GetMiningInfo(Empty) returns (MiningInfo);
+
+  // Get mining template
+  rpc GetBlockTemplate(GetBlockTemplateRequest) returns (BlockTemplate);
+
+  // Submit mined block
+  rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse);
+
+  // Subscribe to mining updates
+  rpc SubscribeMiningUpdates(Empty) returns (stream MiningUpdate);
+}
+
+// Staking Service
+service StakingService {
+  // Stake tokens
+  rpc Stake(StakeRequest) returns (StakePosition);
+
+  // Unstake tokens
+  rpc Unstake(UnstakeRequest) returns (StakePosition);
+
+  // Claim rewards
+  rpc ClaimRewards(ClaimRewardsRequest) returns (ClaimRewardsResponse);
+
+  // Get stake positions
+  rpc GetStakePositions(GetStakePositionsRequest) returns (stream StakePosition);
+
+  // Get staking stats
+  rpc GetStakingStats(Empty) returns (StakingStats);
+}
+
+// Governance Service
+service GovernanceService {
+  // Create proposal
+  rpc CreateProposal(CreateProposalRequest) returns (Proposal);
+
+  // Vote on proposal
+  rpc Vote(VoteRequest) returns (Vote);
+
+  // Get proposal
+  rpc GetProposal(GetProposalRequest) returns (Proposal);
+
+  // Get proposals
+  rpc GetProposals(GetProposalsRequest) returns (stream Proposal);
+
+  // Execute proposal
+  rpc ExecuteProposal(ExecuteProposalRequest) returns (ProposalExecution);
+
+  // Subscribe to proposal updates
+  rpc SubscribeProposalUpdates(SubscribeProposalUpdatesRequest) returns (stream Proposal);
+}
+
+// Messages
+
+message Empty {}
+
+// Blockchain Messages
+message BlockchainInfo {
+  int64 blockHeight = 1;
+  int32 difficulty = 2;
+  double hashRate = 3;
+  double totalSupply = 4;
+  int32 activeAddresses = 5;
+  int64 transactionCount = 6;
+  double averageBlockTime = 7;
+  int32 pendingTransactions = 8;
+}
+
+message Block {
+  int64 index = 1;
+  string hash = 2;
+  string previousHash = 3;
+  int64 timestamp = 4;
+  repeated Transaction transactions = 5;
+  string merkleRoot = 6;
+  int64 nonce = 7;
+  int32 difficulty = 8;
+  string miner = 9;
+  double reward = 10;
+  int32 size = 11;
+}
+
+message GetBlockRequest {
+  oneof identifier {
+    int64 height = 1;
+    string hash = 2;
+  }
+}
+
+message GetBlocksRequest {
+  int32 limit = 1;
+  int64 offset = 2;
+  string sortOrder = 3;
+}
+
+message GetLatestBlocksRequest {
+  int32 limit = 1;
+}
+
+message BlockList {
+  repeated Block blocks = 1;
+  int32 total = 2;
+}
+
+// Transaction Messages
+message Transaction {
+  string id = 1;
+  string from = 2;
+  string to = 3;
+  double amount = 4;
+  double fee = 5;
+  int64 timestamp = 6;
+  int64 blockHeight = 7;
+  int32 confirmations = 8;
+  string status = 9;
+  string signature = 10;
+  repeated TransactionInput inputs = 11;
+  repeated TransactionOutput outputs = 12;
+  string data = 13;
+}
+
+message TransactionInput {
+  string txId = 1;
+  int32 outputIndex = 2;
+  string address = 3;
+  double amount = 4;
+  string signature = 5;
+}
+
+message TransactionOutput {
+  string address = 1;
+  double amount = 2;
+  bool spent = 3;
+}
+
+message GetTransactionRequest {
+  string txId = 1;
+}
+
+message GetTransactionsRequest {
+  string address = 1;
+  int32 limit = 2;
+  int64 offset = 3;
+}
+
+message CreateTransactionRequest {
+  string from = 1;
+  string to = 2;
+  double amount = 3;
+  string privateKey = 4;
+  string data = 5;
+}
+
+message SubmitTransactionRequest {
+  string rawTransaction = 1;
+}
+
+message TransactionResponse {
+  string txId = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message GetPendingTransactionsRequest {
+  int32 limit = 1;
+}
+
+message SubscribeTransactionsRequest {
+  string address = 1;
+}
+
+// Wallet Messages
+message Wallet {
+  string address = 1;
+  double balance = 2;
+  string publicKey = 3;
+  int64 nonce = 4;
+}
+
+message Balance {
+  double confirmed = 1;
+  double unconfirmed = 2;
+  double total = 3;
+}
+
+message GetBalanceRequest {
+  string address = 1;
+}
+
+message GetWalletRequest {
+  string address = 1;
+}
+
+message CreateWalletRequest {
+  string password = 1;
+}
+
+message UTXO {
+  string txId = 1;
+  int32 outputIndex = 2;
+  string address = 3;
+  double amount = 4;
+  int32 confirmations = 5;
+}
+
+message GetUTXOsRequest {
+  string address = 1;
+}
+
+// Smart Contract Messages
+message Contract {
+  string address = 1;
+  string owner = 2;
+  string code = 3;
+  string abi = 4;
+  double balance = 5;
+  int64 createdAt = 6;
+  string deploymentTx = 7;
+}
+
+message DeployContractRequest {
+  string owner = 1;
+  string code = 2;
+  string abi = 3;
+  string privateKey = 4;
+}
+
+message ExecuteContractRequest {
+  string contractAddress = 1;
+  string method = 2;
+  string args = 3;
+  string from = 4;
+  string privateKey = 5;
+  double value = 6;
+}
+
+message ContractExecution {
+  string txId = 1;
+  string result = 2;
+  int64 gasUsed = 3;
+  bool success = 4;
+  repeated string logs = 5;
+}
+
+message GetContractRequest {
+  string address = 1;
+}
+
+message ContractState {
+  string address = 1;
+  string state = 2;
+}
+
+message GetContractStateRequest {
+  string address = 1;
+}
+
+message ContractEvent {
+  string contractAddress = 1;
+  string event = 2;
+  string args = 3;
+  string transactionHash = 4;
+  int64 blockNumber = 5;
+}
+
+message SubscribeContractEventsRequest {
+  string contractAddress = 1;
+  repeated string events = 2;
+}
+
+// Mining Messages
+message MiningInfo {
+  int32 difficulty = 1;
+  double hashRate = 2;
+  int32 miners = 3;
+  double blockReward = 4;
+  int64 estimatedBlockTime = 5;
+}
+
+message BlockTemplate {
+  int64 index = 1;
+  string previousHash = 2;
+  repeated Transaction transactions = 3;
+  int32 difficulty = 4;
+  string merkleRoot = 5;
+}
+
+message GetBlockTemplateRequest {
+  string minerAddress = 1;
+}
+
+message SubmitBlockRequest {
+  Block block = 1;
+}
+
+message SubmitBlockResponse {
+  bool accepted = 1;
+  string message = 2;
+  string blockHash = 3;
+}
+
+message MiningUpdate {
+  double hashRate = 1;
+  int32 difficulty = 2;
+  int32 miners = 3;
+  int64 estimatedBlockTime = 4;
+}
+
+// Staking Messages
+message StakePosition {
+  string id = 1;
+  string address = 2;
+  double amount = 3;
+  int64 startTime = 4;
+  int32 lockPeriod = 5;
+  double apy = 6;
+  double rewards = 7;
+  string status = 8;
+}
+
+message StakeRequest {
+  string address = 1;
+  double amount = 2;
+  int32 lockPeriod = 3;
+  string privateKey = 4;
+}
+
+message UnstakeRequest {
+  string stakeId = 1;
+  string privateKey = 2;
+}
+
+message ClaimRewardsRequest {
+  string stakeId = 1;
+  string privateKey = 2;
+}
+
+message ClaimRewardsResponse {
+  double amount = 1;
+  string txId = 2;
+}
+
+message GetStakePositionsRequest {
+  string address = 1;
+}
+
+message StakingStats {
+  double totalStaked = 1;
+  int32 stakers = 2;
+  double averageApy = 3;
+  double totalRewards = 4;
+}
+
+// Governance Messages
+message Proposal {
+  string id = 1;
+  string proposer = 2;
+  string title = 3;
+  string description = 4;
+  string type = 5;
+  string status = 6;
+  double votesFor = 7;
+  double votesAgainst = 8;
+  int64 startTime = 9;
+  int64 endTime = 10;
+  double quorum = 11;
+  bool executed = 12;
+}
+
+message CreateProposalRequest {
+  string proposer = 1;
+  string title = 2;
+  string description = 3;
+  string type = 4;
+  string privateKey = 5;
+}
+
+message Vote {
+  string id = 1;
+  string proposalId = 2;
+  string voter = 3;
+  bool support = 4;
+  double votingPower = 5;
+  int64 timestamp = 6;
+}
+
+message VoteRequest {
+  string proposalId = 1;
+  string voter = 2;
+  bool support = 3;
+  string privateKey = 4;
+}
+
+message GetProposalRequest {
+  string proposalId = 1;
+}
+
+message GetProposalsRequest {
+  string status = 1;
+  int32 limit = 2;
+  int64 offset = 3;
+}
+
+message ProposalExecution {
+  string proposalId = 1;
+  bool success = 2;
+  string txId = 3;
+}
+
+message ExecuteProposalRequest {
+  string proposalId = 1;
+  string executor = 2;
+  string privateKey = 3;
+}
+
+message SubscribeProposalUpdatesRequest {
+  string proposalId = 1;
+}
