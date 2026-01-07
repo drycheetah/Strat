@@ -1,0 +1,2354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STRAT Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Space Grotesk', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; color: #fff; }
+        .gradient-primary { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .text-gradient { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-primary { background: linear-gradient(135deg, #14f195 0%, #9945ff 100%); border: none; color: #000; font-weight: 600; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(20, 241, 149, 0.4); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; transition: all 0.3s; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: #14f195; }
+        input, textarea { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; outline: none; }
+        input:focus, textarea:focus { border-color: #14f195; box-shadow: 0 0 20px rgba(20, 241, 149, 0.2); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(10px); border-right: 1px solid rgba(255, 255, 255, 0.1); z-index: 100; }
+        .main-content { margin-left: 260px; min-height: 100vh; }
+        .nav-item { padding: 12px 20px; margin: 4px 10px; border-radius: 12px; cursor: pointer; transition: all 0.3s; }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.05); }
+        .nav-item.active { background: linear-gradient(135deg, rgba(20, 241, 149, 0.1) 0%, rgba(153, 69, 255, 0.1) 100%); border-left: 3px solid #14f195; }
+        .toast { position: fixed; top: 20px; right: 20px; min-width: 300px; padding: 16px 20px; background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); z-index: 9999; transform: translateX(400px); transition: all 0.3s ease-in-out; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .toast.show { transform: translateX(0); }
+        .toast.success { border-left: 4px solid #14f195; }
+        .toast.error { border-left: 4px solid #ef4444; }
+        .toast.info { border-left: 4px solid #3b82f6; }
+        .toast.warning { border-left: 4px solid #f59e0b; }
+        @keyframes slideInRight { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="p-6">
+            <h1 class="text-2xl font-bold text-gradient mb-8">STRAT</h1>
+            <nav class="space-y-2">
+                <div class="nav-item active" onclick="showSection('overview')">
+                    <i class="fas fa-chart-line mr-3"></i> Overview
+                </div>
+                <div class="nav-item" onclick="showSection('wallet')">
+                    <i class="fas fa-wallet mr-3"></i> My Wallet
+                </div>
+                <div class="nav-item" onclick="showSection('send')">
+                    <i class="fas fa-paper-plane mr-3"></i> Send
+                </div>
+                <div class="nav-item" onclick="showSection('mine')">
+                    <i class="fas fa-cube mr-3"></i> Mining
+                </div>
+                <div class="nav-item" onclick="showSection('contracts')">
+                    <i class="fas fa-file-contract mr-3"></i> Smart Contracts
+                </div>
+                <div class="nav-item" onclick="showSection('explorer')">
+                    <i class="fas fa-search mr-3"></i> Explorer
+                </div>
+                <div class="nav-item" onclick="showSection('bridge')">
+                    <i class="fas fa-bridge mr-3"></i> SOL Bridge
+                </div>
+                <div class="nav-item" onclick="showSection('liquidity')">
+                    <i class="fas fa-water mr-3"></i> Liquidity Pool
+                </div>
+                <div class="nav-item" onclick="showSection('buy')">
+                    <i class="fas fa-shopping-cart mr-3"></i> Buy STRAT
+                </div>
+                <div class="nav-item" onclick="showSection('staking')">
+                    <i class="fas fa-coins mr-3"></i> Staking
+                </div>
+                <div class="nav-item" onclick="showSection('mempool')">
+                    <i class="fas fa-layer-group mr-3"></i> Mempool
+                </div>
+                <div class="nav-item" onclick="showSection('analytics')">
+                    <i class="fas fa-chart-bar mr-3"></i> Analytics
+                </div>
+                <div class="nav-item" onclick="showSection('portfolio')">
+                    <i class="fas fa-briefcase mr-3"></i> Portfolio
+                </div>
+                <div class="nav-item" onclick="showSection('leaderboard')">
+                    <i class="fas fa-trophy mr-3"></i> Leaderboard
+                </div>
+                <div class="nav-item" onclick="showSection('history')">
+                    <i class="fas fa-history mr-3"></i> History
+                </div>
+            </nav>
+        </div>
+        <div class="absolute bottom-0 w-full p-6 border-t border-gray-800">
+            <button onclick="logout()" class="w-full btn-secondary px-4 py-2 rounded-lg">
+                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="glass sticky top-0 z-50">
+            <div class="container mx-auto px-8 py-4 flex justify-between items-center">
+                <div>
+                    <div class="text-sm text-gray-400">Welcome back</div>
+                    <div class="text-lg font-semibold" id="username">Loading...</div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="glass px-4 py-2 rounded-full">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-sm">Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-8">
+            <!-- Overview Section -->
+            <div id="section-overview">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">STRAT Price</div>
+                        <div class="text-2xl font-bold text-green-400" id="stat-price">$0.00</div>
+                        <div class="text-xs mt-1" id="stat-price-change">-</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Block Height</div>
+                        <div class="text-3xl font-bold text-gradient" id="stat-height">0</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Difficulty</div>
+                        <div class="text-3xl font-bold text-gradient" id="stat-diff">0</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Pending TXs</div>
+                        <div class="text-3xl font-bold text-gradient" id="stat-pending">0</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-sm text-gray-400 mb-2">Market Cap</div>
+                        <div class="text-2xl font-bold text-gradient" id="stat-mcap">$0</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="glass p-6 rounded-2xl">
+                        <h3 class="text-xl font-bold mb-4">Network Activity</h3>
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <h3 class="text-xl font-bold mb-4">Recent Blocks</h3>
+                        <div id="recent-blocks" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallet Section -->
+            <div id="section-wallet" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">My Wallet</h2>
+                    <div class="bg-gradient-to-r from-green-900/20 to-purple-900/20 p-6 rounded-xl mb-6">
+                        <div class="text-sm text-gray-400 mb-2">Total Balance</div>
+                        <div class="text-5xl font-bold text-gradient" id="wallet-balance">0.00 STRAT</div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="text-sm text-gray-400 mb-2">Wallet Address</div>
+                        <div class="flex items-center space-x-2">
+                            <input id="wallet-address" readonly class="flex-1 px-4 py-3 rounded-lg font-mono text-sm">
+                            <button onclick="copyAddress()" class="btn-secondary px-4 py-3 rounded-lg">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-8 rounded-2xl">
+                    <h3 class="text-xl font-bold mb-4">Transaction History</h3>
+                    <div id="tx-history" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- Send Section -->
+            <div id="section-send" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-2xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-6">Send STRAT</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Recipient Address</label>
+                            <input id="send-address" placeholder="STRAT..." class="w-full px-4 py-3 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Amount</label>
+                            <input id="send-amount" type="number" step="0.01" placeholder="0.00" class="w-full px-4 py-3 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Password</label>
+                            <input id="send-password" type="password" placeholder="Enter your password" class="w-full px-4 py-3 rounded-xl">
+                        </div>
+                        <button onclick="sendTransaction()" class="btn-primary w-full px-6 py-4 rounded-xl text-lg">
+                            Send Transaction
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mining Section -->
+            <div id="section-mine" class="hidden">
+                <!-- Mining Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-gray-400 mb-2">Pending Transactions</div>
+                        <div class="text-3xl font-bold text-green-400" id="pending-tx-count">-</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-gray-400 mb-2">Total Fees Available</div>
+                        <div class="text-3xl font-bold text-green-400" id="pending-fees">-</div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="text-gray-400 mb-2">Mining Difficulty</div>
+                        <div class="text-3xl font-bold text-green-400" id="mining-difficulty">-</div>
+                    </div>
+                </div>
+
+                <!-- Mine Block Button -->
+                <div class="glass p-8 rounded-2xl text-center mb-6">
+                    <h2 class="text-2xl font-bold mb-4">Mine New Block</h2>
+                    <p class="text-gray-400 mb-6">Mine pending transactions and earn <span id="mining-reward">1</span> STRAT + fees</p>
+                    <button id="mine-btn" onclick="startMining()" class="btn-primary px-12 py-4 rounded-xl text-lg">
+                        <i class="fas fa-cube mr-2"></i> Start Mining
+                    </button>
+                    <div id="mine-status" class="mt-6 hidden">
+                        <div class="text-green-400 mb-2">Mining in progress...</div>
+                        <div class="text-sm text-gray-400">This may take a while depending on difficulty</div>
+                    </div>
+                </div>
+
+                <!-- Pending Transactions List -->
+                <div class="glass p-8 rounded-2xl">
+                    <h3 class="text-xl font-bold mb-6">Pending Transactions in Mempool</h3>
+                    <div id="pending-tx-list" class="space-y-4">
+                        <div class="text-center text-gray-400 py-8">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Recent Blocks -->
+                <div class="glass p-8 rounded-2xl mt-6">
+                    <h3 class="text-xl font-bold mb-6">Recently Mined Blocks</h3>
+                    <div id="recent-blocks-list" class="space-y-4">
+                        <div class="text-center text-gray-400 py-8">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Smart Contracts Section -->
+            <div id="section-contracts" class="hidden">
+                <div class="glass p-8 rounded-2xl">
+                    <h2 class="text-2xl font-bold mb-6">Smart Contracts</h2>
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">Contract Code (JavaScript)</label>
+                        <textarea id="contract-code" rows="10" placeholder="// Example: const count = state.count || 0; state.count++; return {count: state.count};" class="w-full px-4 py-3 rounded-xl font-mono text-sm"></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">Password</label>
+                        <input id="contract-password" type="password" class="w-full px-4 py-3 rounded-xl">
+                    </div>
+                    <button onclick="deployContract()" class="btn-primary px-8 py-3 rounded-xl">
+                        Deploy Contract
+                    </button>
+                </div>
+            </div>
+
+            <!-- Explorer Section -->
+            <div id="section-explorer" class="hidden">
+                <div class="glass p-8 rounded-2xl">
+                    <h2 class="text-2xl font-bold mb-6">Block Explorer</h2>
+                    <div id="blocks-list" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- Bridge Section -->
+            <div id="section-bridge" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-3xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-4">SOL → STRAT Bridge</h2>
+                    <div class="bg-purple-900/20 border border-purple-500/30 p-4 rounded-xl mb-6">
+                        <p class="text-sm text-purple-200">
+                            <strong>💰 Bridge Fee:</strong> <span id="bridge-fee-display">2%</span> fee applies to all conversions
+                        </p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3">How it works</h3>
+                            <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                                <li>Send SOL to the bridge address below</li>
+                                <li>Copy your transaction signature</li>
+                                <li>Paste it here to claim your STRAT tokens</li>
+                                <li>Exchange rate: <span class="text-gradient font-bold" id="exchange-rate">1 SOL = 10 STRAT</span> (minus <span id="bridge-fee-display2">2%</span> fee)</li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Bridge Address (Send SOL here)</label>
+                            <div class="flex items-center space-x-2">
+                                <input id="bridge-address" readonly class="flex-1 px-4 py-3 rounded-lg font-mono text-sm bg-gray-800/50">
+                                <button onclick="copyBridgeAddress()" class="btn-secondary px-4 py-3 rounded-lg">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Transaction Signature</label>
+                            <input id="bridge-signature" placeholder="Paste your Solana transaction signature" class="w-full px-4 py-3 rounded-xl font-mono text-sm">
+                        </div>
+
+                        <button onclick="verifyBridge()" class="btn-primary w-full px-6 py-4 rounded-xl text-lg">
+                            <i class="fas fa-check-circle mr-2"></i> Verify & Claim STRAT
+                        </button>
+
+                        <div id="bridge-result" class="hidden p-4 rounded-xl"></div>
+
+                        <div class="mt-8">
+                            <h3 class="text-lg font-semibold mb-4">Bridge History</h3>
+                            <div id="bridge-history" class="space-y-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Liquidity Pool Section -->
+            <div id="section-liquidity" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-4xl mx-auto mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Liquidity Pool (AMM)</h2>
+
+                    <!-- Pool Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Pool TVL</div>
+                            <div class="text-2xl font-bold text-green-400" id="pool-tvl">$0</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Current Price</div>
+                            <div class="text-2xl font-bold text-purple-400" id="pool-price">$0.01</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">24h Volume</div>
+                            <div class="text-2xl font-bold text-blue-400" id="pool-volume">$0</div>
+                        </div>
+                    </div>
+
+                    <!-- Pool Reserves -->
+                    <div class="bg-purple-900/20 border border-purple-500/30 p-6 rounded-xl mb-6">
+                        <div class="text-lg font-bold mb-4">Pool Reserves</div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-gray-400">SOL Reserve</div>
+                                <div class="text-2xl font-bold text-gradient" id="pool-sol-reserve">0</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-400">STRAT Reserve</div>
+                                <div class="text-2xl font-bold text-gradient" id="pool-strat-reserve">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!--  Pool Backing Info -->
+                    <div class="bg-green-900/20 border border-green-500/30 p-6 rounded-xl mb-6">
+                        <div class="text-lg font-bold mb-4 flex items-center">
+                            <i class="fas fa-shield-alt text-green-400 mr-2"></i>
+                            Backed by Real Assets
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">SOL Reserve (On-Chain)</span>
+                                <span class="font-bold text-green-400" id="backed-sol">0 SOL</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">STRAT Reserve (Circulating)</span>
+                                <span class="font-bold text-purple-400" id="backed-strat">0 STRAT</span>
+                            </div>
+                            <div class="text-xs text-gray-500 pt-2 border-t border-white/10">
+                                Pool reserves are verified on-chain. Price determined by actual SOL deposits to bridge wallet.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- How It Works -->
+                    <div class="bg-blue-900/20 border border-blue-500/30 p-6 rounded-xl">
+                        <div class="text-lg font-bold mb-4">How The Pool Works</div>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-green-400 mt-1"></i>
+                                <div>
+                                    <div class="font-bold">Real SOL Backing</div>
+                                    <div class="text-gray-400">All SOL sent to bridge is locked on-chain, verifiable at the bridge address</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-green-400 mt-1"></i>
+                                <div>
+                                    <div class="font-bold">Market-Based Pricing</div>
+                                    <div class="text-gray-400">Price adjusts automatically based on SOL/STRAT ratio using AMM formula</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-green-400 mt-1"></i>
+                                <div>
+                                    <div class="font-bold">No Fake Liquidity</div>
+                                    <div class="text-gray-400">Reserves sync with actual blockchain state every transaction</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staking Section -->
+            <div id="section-staking" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-4xl mx-auto mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Stake STRAT & Earn Rewards</h2>
+
+                    <!-- Staking Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Your Staked Balance</div>
+                            <div class="text-3xl font-bold text-green-400" id="stake-balance">0 STRAT</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Rewards Earned</div>
+                            <div class="text-3xl font-bold text-purple-400" id="stake-rewards">0 STRAT</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Active Stakes</div>
+                            <div class="text-3xl font-bold text-blue-400" id="stake-count">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Lock Periods -->
+                    <div class="bg-purple-900/20 border border-purple-500/30 p-6 rounded-xl mb-6">
+                        <h3 class="text-lg font-bold mb-4">Available Lock Periods</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="lock-periods"></div>
+                    </div>
+
+                    <!-- Create Stake Form -->
+                    <div class="glass p-6 rounded-xl mb-6">
+                        <h3 class="text-xl font-bold mb-4">Create New Stake</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Amount to Stake</label>
+                                <input id="stake-amount" type="number" step="0.01" min="1" placeholder="Min 1 STRAT" class="w-full px-4 py-3 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Lock Period</label>
+                                <select id="stake-period" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white">
+                                    <option value="">Select period...</option>
+                                </select>
+                            </div>
+                            <div class="glass p-4 rounded-xl" id="stake-estimate" style="display:none;">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Estimated Rewards:</span>
+                                    <span class="text-xl font-bold text-green-400" id="stake-est-rewards">0 STRAT</span>
+                                </div>
+                            </div>
+                            <button onclick="createStake()" class="btn-primary w-full px-6 py-4 rounded-xl text-lg">
+                                <i class="fas fa-lock mr-2"></i> Stake Tokens
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Stakes -->
+                    <div class="glass p-6 rounded-xl">
+                        <h3 class="text-xl font-bold mb-4">Your Stakes</h3>
+                        <div id="active-stakes-list" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mempool Section -->
+            <div id="section-mempool" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Transaction Mempool</h2>
+
+                    <!-- Mempool Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Pending Transactions</div>
+                            <div class="text-3xl font-bold text-green-400" id="mempool-count">0</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Fees</div>
+                            <div class="text-3xl font-bold text-purple-400" id="mempool-fees">0 STRAT</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Avg Fee Rate</div>
+                            <div class="text-3xl font-bold text-blue-400" id="mempool-avg-fee">0</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Utilization</div>
+                            <div class="text-3xl font-bold text-yellow-400" id="mempool-util">0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Fee Recommendations -->
+                    <div class="bg-green-900/20 border border-green-500/30 p-6 rounded-xl mb-6">
+                        <h3 class="text-lg font-bold mb-4">Recommended Fee Rates</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="glass p-4 rounded-xl">
+                                <div class="text-sm text-gray-400">Slow</div>
+                                <div class="text-xl font-bold text-green-400" id="fee-slow">-</div>
+                            </div>
+                            <div class="glass p-4 rounded-xl">
+                                <div class="text-sm text-gray-400">Standard</div>
+                                <div class="text-xl font-bold text-yellow-400" id="fee-standard">-</div>
+                            </div>
+                            <div class="glass p-4 rounded-xl">
+                                <div class="text-sm text-gray-400">Fast</div>
+                                <div class="text-xl font-bold text-red-400" id="fee-fast">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mempool Transactions -->
+                    <div class="glass p-6 rounded-xl">
+                        <h3 class="text-xl font-bold mb-4">Pending Transactions (By Priority)</h3>
+                        <div id="mempool-txs-list" class="space-y-3">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buy STRAT Section -->
+            <div id="section-buy" class="hidden">
+                <div class="glass p-8 rounded-2xl max-w-3xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-4">Buy STRAT</h2>
+                    <div class="bg-green-900/20 border border-green-500/30 p-4 rounded-xl mb-6">
+                        <p class="text-sm">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Purchase STRAT tokens and receive them directly to your wallet
+                        </p>
+                    </div>
+
+                    <!-- Current Price -->
+                    <div class="glass p-6 rounded-xl mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <div class="text-sm text-gray-400">Current STRAT Price</div>
+                                <div class="text-3xl font-bold text-green-400" id="buy-price">$0.01</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-400">Your Wallet</div>
+                                <div class="text-lg font-bold" id="buy-balance">0 STRAT</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Form -->
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Payment Method</label>
+                            <select id="buy-method" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+                                <option value="solana" class="bg-gray-900 text-white">Solana (SOL) - Use Bridge Instead</option>
+                                <option value="crypto" selected class="bg-gray-900 text-white">Cryptocurrency (Coming Soon)</option>
+                                <option value="card" class="bg-gray-900 text-white">Credit/Debit Card (Coming Soon)</option>
+                                <option value="paypal" class="bg-gray-900 text-white">PayPal (Coming Soon)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Amount to Spend (USD)</label>
+                            <input id="buy-usd-amount" type="number" step="0.01" min="1" placeholder="10.00" class="w-full px-4 py-3 rounded-xl" oninput="calculateSTRAT()">
+                        </div>
+
+                        <div class="glass p-4 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">You will receive</span>
+                                <span class="text-2xl font-bold text-green-400" id="buy-strat-amount">0 STRAT</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-purple-900/20 border border-purple-500/30 p-4 rounded-xl">
+                            <p class="text-sm text-purple-400 mb-3">
+                                <i class="fas fa-coins mr-2"></i>
+                                <strong>How to Purchase STRAT:</strong>
+                            </p>
+                            <ul class="space-y-3 text-sm">
+                                <li class="flex items-start gap-3 bg-white/5 p-3 rounded-lg">
+                                    <i class="fas fa-bridge text-purple-400 mt-1"></i>
+                                    <div>
+                                        <div class="font-bold text-green-400 mb-1">1. SOL Bridge (Instant)</div>
+                                        <div class="text-gray-400">Convert Solana to STRAT instantly • 1 SOL = 10 STRAT</div>
+                                        <a href="#" onclick="showSection('bridge'); return false;" class="text-green-400 underline text-xs">Go to Bridge →</a>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3 bg-white/5 p-3 rounded-lg">
+                                    <i class="fas fa-cube text-blue-400 mt-1"></i>
+                                    <div>
+                                        <div class="font-bold text-green-400 mb-1">2. Mine Blocks</div>
+                                        <div class="text-gray-400">Earn 1 STRAT per block mined + transaction fees</div>
+                                        <a href="#" onclick="showSection('mine'); return false;" class="text-green-400 underline text-xs">Start Mining →</a>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3 bg-white/5 p-3 rounded-lg">
+                                    <i class="fas fa-exchange-alt text-yellow-400 mt-1"></i>
+                                    <div>
+                                        <div class="font-bold text-green-400 mb-1">3. Crypto OTC Trades</div>
+                                        <div class="text-gray-400">Buy with BTC, ETH, USDC, or other cryptocurrencies</div>
+                                        <div class="text-xs text-gray-500 mt-1">Direct peer-to-peer crypto trades available</div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="text-center pt-4">
+                            <p class="text-xs text-gray-500">💳 Credit card purchases planned for future release</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div id="section-analytics" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Blockchain Analytics</h2>
+
+                    <!-- Key Metrics -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Network Hashrate</div>
+                            <div class="text-2xl font-bold text-green-400" id="analytics-hashrate">-</div>
+                            <div class="text-xs text-gray-500 mt-1">H/s</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Avg Block Time</div>
+                            <div class="text-2xl font-bold text-blue-400" id="analytics-blocktime">-</div>
+                            <div class="text-xs text-gray-500 mt-1">seconds</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">24h Transactions</div>
+                            <div class="text-2xl font-bold text-purple-400" id="analytics-txs">-</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Value Locked</div>
+                            <div class="text-2xl font-bold text-yellow-400" id="analytics-tvl">-</div>
+                            <div class="text-xs text-gray-500 mt-1">STRAT</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 1 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">Difficulty Chart (30 Days)</h3>
+                            <canvas id="difficulty-chart" height="200"></canvas>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">Transactions per Day</h3>
+                            <canvas id="transactions-chart" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 2 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">STRAT/SOL Price</h3>
+                            <canvas id="price-chart" height="200"></canvas>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4">Network Distribution</h3>
+                            <canvas id="distribution-chart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portfolio Section -->
+            <div id="section-portfolio" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Your Portfolio</h2>
+
+                    <!-- Portfolio Summary -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Balance</div>
+                            <div class="text-3xl font-bold text-green-400" id="portfolio-balance">0 STRAT</div>
+                            <div class="text-xs text-green-400 mt-1" id="portfolio-usd">$0.00</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Staked</div>
+                            <div class="text-3xl font-bold text-purple-400" id="portfolio-staked">0 STRAT</div>
+                            <div class="text-xs text-gray-500 mt-1">Earning rewards</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Total Earned</div>
+                            <div class="text-3xl font-bold text-blue-400" id="portfolio-earned">0 STRAT</div>
+                            <div class="text-xs text-gray-500 mt-1">Mining + Staking</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl">
+                            <div class="text-sm text-gray-400 mb-2">Portfolio Value</div>
+                            <div class="text-3xl font-bold text-yellow-400" id="portfolio-value">$0.00</div>
+                            <div class="text-xs mt-1" id="portfolio-change">+0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Asset Breakdown -->
+                    <div class="glass p-6 rounded-xl mb-6">
+                        <h3 class="text-xl font-bold mb-4">Asset Breakdown</h3>
+                        <div class="space-y-4" id="portfolio-assets"></div>
+                    </div>
+
+                    <!-- Activity Chart -->
+                    <div class="glass p-6 rounded-xl">
+                        <h3 class="text-xl font-bold mb-4">Balance History</h3>
+                        <canvas id="balance-history-chart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Section -->
+            <div id="section-leaderboard" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Leaderboards</h2>
+
+                    <div class="flex gap-4 mb-6">
+                        <button onclick="switchLeaderboard('miners')" id="lb-miners-btn" class="btn-primary px-6 py-3 rounded-xl">
+                            <i class="fas fa-cube mr-2"></i> Top Miners
+                        </button>
+                        <button onclick="switchLeaderboard('stakers')" id="lb-stakers-btn" class="btn-secondary px-6 py-3 rounded-xl">
+                            <i class="fas fa-coins mr-2"></i> Top Stakers
+                        </button>
+                        <button onclick="switchLeaderboard('holders')" id="lb-holders-btn" class="btn-secondary px-6 py-3 rounded-xl">
+                            <i class="fas fa-wallet mr-2"></i> Top Holders
+                        </button>
+                    </div>
+
+                    <!-- Top Miners -->
+                    <div id="leaderboard-miners" class="glass p-6 rounded-xl">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                            <i class="fas fa-trophy text-yellow-400"></i> Top Miners (Last 30 Days)
+                        </h3>
+                        <div id="miners-list" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Top Stakers -->
+                    <div id="leaderboard-stakers" class="glass p-6 rounded-xl hidden">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                            <i class="fas fa-trophy text-yellow-400"></i> Top Stakers
+                        </h3>
+                        <div id="stakers-list" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Top Holders -->
+                    <div id="leaderboard-holders" class="glass p-6 rounded-xl hidden">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                            <i class="fas fa-trophy text-yellow-400"></i> Top Holders
+                        </h3>
+                        <div id="holders-list" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction History Section -->
+            <div id="section-history" class="hidden">
+                <div class="glass p-8 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-6">Transaction History</h2>
+
+                    <!-- Filters -->
+                    <div class="flex gap-4 mb-6 flex-wrap">
+                        <select id="history-filter" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white">
+                            <option value="all">All Transactions</option>
+                            <option value="sent">Sent</option>
+                            <option value="received">Received</option>
+                            <option value="mining">Mining Rewards</option>
+                            <option value="staking">Staking Rewards</option>
+                        </select>
+                        <input id="history-search" type="text" placeholder="Search by hash or address..." class="px-4 py-2 rounded-xl flex-1">
+                        <button onclick="loadHistory()" class="btn-primary px-6 py-2 rounded-xl">
+                            <i class="fas fa-search mr-2"></i> Search
+                        </button>
+                    </div>
+
+                    <!-- Transaction List -->
+                    <div id="history-list" class="space-y-3">
+                        <div class="text-center text-gray-400 py-8">Loading transactions...</div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="flex justify-center gap-2 mt-6" id="history-pagination">
+                        <button onclick="loadHistory(historyPage-1)" class="btn-secondary px-4 py-2 rounded-lg">Previous</button>
+                        <span class="px-4 py-2 text-gray-400">Page <span id="history-page-num">1</span></span>
+                        <button onclick="loadHistory(historyPage+1)" class="btn-secondary px-4 py-2 rounded-lg">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal active">
+        <div class="glass p-8 rounded-3xl w-full max-w-md mx-4">
+            <h2 class="text-3xl font-bold text-center mb-6">Welcome to STRAT</h2>
+            <div class="space-y-4">
+                <input id="login-email" type="email" placeholder="Email" class="w-full px-4 py-3 rounded-xl">
+                <div>
+                    <input id="login-password" type="password" placeholder="Password" class="w-full px-4 py-3 rounded-xl">
+                    <div class="text-xs text-gray-500 mt-1">
+                        Min 8 characters, must include uppercase, lowercase, and number
+                    </div>
+                </div>
+                <div id="login-error" class="hidden text-red-400 text-sm text-center"></div>
+                <button onclick="login()" class="btn-primary w-full px-6 py-4 rounded-xl text-lg">
+                    Launch Dashboard
+                </button>
+                <div class="text-center text-sm text-gray-400">
+                    New user? Wallet created automatically on first login
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
+
+    <script>
+        const API = window.location.hostname === 'localhost'
+            ? 'http://localhost:3000/api'
+            : '/api';
+        let token = localStorage.getItem('token');
+        let userData = null;
+        let walletData = null;
+
+        // Check auth
+        if (!token) {
+            document.getElementById('loginModal').classList.add('active');
+        } else {
+            // Verify token is valid by attempting to load dashboard
+            loadDashboard().catch(() => {
+                // If loading fails, clear token and show login
+                localStorage.removeItem('token');
+                token = null;
+                document.getElementById('loginModal').classList.add('active');
+            });
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            errorDiv.classList.add('hidden');
+
+            try {
+                let res = await fetch(`${API}/auth/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email, password})
+                });
+
+                if (!res.ok) {
+                    // Try registering if login fails
+                    res = await fetch(`${API}/auth/register`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email, username: email.split('@')[0], password})
+                    });
+                }
+
+                const data = await res.json();
+
+                if (data.token) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    document.getElementById('loginModal').classList.remove('active');
+                    loadDashboard();
+                } else if (data.details && data.details.length > 0) {
+                    // Show validation errors
+                    errorDiv.textContent = data.details.map(d => d.message).join(', ');
+                    errorDiv.classList.remove('hidden');
+                } else if (data.error || data.message) {
+                    errorDiv.textContent = data.error || data.message;
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    errorDiv.textContent = 'Login failed. Please check your credentials.';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch(e) {
+                errorDiv.textContent = 'Login error: ' + e.message;
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const [stats, wallets, profile] = await Promise.all([
+                    fetch(`${API}/blockchain/stats`).then(r => r.json()),
+                    fetch(`${API}/wallets`, {headers: {'Authorization': `Bearer ${token}`}}).then(r => r.json()),
+                    fetch(`${API}/auth/profile`, {headers: {'Authorization': `Bearer ${token}`}}).then(r => r.json())
+                ]);
+
+                // Update username
+                if (profile.user) {
+                    document.getElementById('username').textContent = profile.user.username || profile.user.email;
+                }
+
+                // Update stats
+                if (stats.stats) {
+                    document.getElementById('stat-height').textContent = stats.stats.blockHeight;
+                    document.getElementById('stat-diff').textContent = stats.stats.difficulty;
+                    document.getElementById('stat-pending').textContent = stats.stats.pendingTransactions;
+                }
+
+                // Load price data
+                loadPriceData();
+
+                // Update wallet
+                if (wallets.wallets && wallets.wallets[0]) {
+                    walletData = wallets.wallets[0];
+                    document.getElementById('wallet-balance').textContent = walletData.balance.toFixed(2) + ' STRAT';
+                    document.getElementById('wallet-address').value = walletData.address;
+
+                    // Load transaction history
+                    loadTransactionHistory();
+                }
+
+                loadBlocks();
+            } catch(e) {
+                console.error('Dashboard load error:', e);
+                // If auth fails, clear token and show login
+                if (e.message.includes('401') || e.message.includes('Unauthorized')) {
+                    localStorage.removeItem('token');
+                    token = null;
+                    document.getElementById('loginModal').classList.add('active');
+                }
+            }
+        }
+
+        async function loadPriceData() {
+            try {
+                const res = await fetch(`${API}/price/current`);
+                const data = await res.json();
+
+                if (data.success && data.price) {
+                    const p = data.price;
+
+                    // Update price
+                    document.getElementById('stat-price').textContent = '$' + p.usd.toFixed(4);
+
+                    // Update price change
+                    const changeEl = document.getElementById('stat-price-change');
+                    const changePercent = p.priceChangePercent24h || 0;
+                    const changeColor = changePercent >= 0 ? 'text-green-400' : 'text-red-400';
+                    const changeSymbol = changePercent >= 0 ? '+' : '';
+                    changeEl.className = `text-xs mt-1 ${changeColor}`;
+                    changeEl.textContent = `${changeSymbol}${changePercent.toFixed(2)}% 24h`;
+
+                    // Update market cap
+                    const mcap = p.marketCap || 0;
+                    document.getElementById('stat-mcap').textContent = '$' + (mcap >= 1000000 ?
+                        (mcap / 1000000).toFixed(2) + 'M' :
+                        mcap.toFixed(0));
+                }
+            } catch(e) {
+                console.error('Failed to load price:', e);
+            }
+        }
+
+        async function loadBlocks() {
+            try {
+                const res = await fetch(`${API}/blockchain/blocks?limit=50`);
+                const data = await res.json();
+                const html = data.blocks.map(b => `
+                    <div class="bg-white/5 p-4 rounded-xl">
+                        <div class="flex justify-between">
+                            <div><span class="font-bold">Block #${b.index}</span></div>
+                            <div class="text-sm text-gray-400">${new Date(b.timestamp).toLocaleString()}</div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2 font-mono">${b.hash.substring(0,40)}...</div>
+                    </div>
+                `).join('');
+                document.getElementById('recent-blocks').innerHTML = html;
+                document.getElementById('blocks-list').innerHTML = html;
+            } catch(e) {}
+        }
+
+        async function loadMiningData() {
+            try {
+                // Load mempool status
+                const mempoolRes = await fetch(`${API}/transactions/mempool`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const mempool = await mempoolRes.json();
+
+                // Load blockchain stats
+                const statsRes = await fetch(`${API}/blockchain/stats`);
+                const stats = await statsRes.json();
+
+                // Update mining stats
+                document.getElementById('pending-tx-count').textContent = mempool.mempool.transactionCount;
+                document.getElementById('pending-fees').textContent = mempool.mempool.totalFees.toFixed(4) + ' STRAT';
+                document.getElementById('mining-difficulty').textContent = stats.difficulty || 4;
+                document.getElementById('mining-reward').textContent = stats.miningReward || 1;
+
+                // Display pending transactions
+                const pendingHtml = mempool.mempool.transactions.length > 0
+                    ? mempool.mempool.transactions.map(tx => `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-bold text-sm text-gray-400">${tx.hash.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        ${tx.isCoinbase ? 'Coinbase' : tx.isContractDeploy ? 'Contract Deploy' : tx.isContractCall ? 'Contract Call' : 'Transfer'}
+                                        • ${tx.inputCount} inputs • ${tx.outputCount} outputs
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm text-gray-400">${new Date(tx.timestamp).toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<div class="text-center text-gray-400 py-8">No pending transactions</div>';
+
+                document.getElementById('pending-tx-list').innerHTML = pendingHtml;
+
+                // Display recent blocks
+                const blocksRes = await fetch(`${API}/blockchain/blocks?limit=10`);
+                const blocksData = await blocksRes.json();
+
+                const blocksHtml = blocksData.blocks.map(b => `
+                    <div class="bg-white/5 p-4 rounded-xl">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-bold">Block #${b.index}</div>
+                                <div class="text-xs text-gray-500 font-mono mt-1">${b.hash.substring(0, 40)}...</div>
+                                <div class="text-xs text-gray-400 mt-1">${b.transactions.length} transactions</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-400">${new Date(b.timestamp).toLocaleString()}</div>
+                                <div class="text-xs text-green-400 mt-1">Mined by: ${b.transactions[0]?.outputs[0]?.address.substring(0, 16)}...</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('recent-blocks-list').innerHTML = blocksHtml;
+
+            } catch(e) {
+                console.error('Failed to load mining data:', e);
+            }
+        }
+
+        async function startMining() {
+            document.getElementById('mine-status').classList.remove('hidden');
+            document.getElementById('mine-btn').disabled = true;
+            try {
+                await fetch(`${API}/blockchain/mine`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                alert('Block mined successfully!');
+                loadDashboard();
+                loadMiningData();
+            } catch(e) {
+                alert('Mining error: ' + e.message);
+            } finally {
+                document.getElementById('mine-status').classList.add('hidden');
+                document.getElementById('mine-btn').disabled = false;
+            }
+        }
+
+        async function loadTransactionHistory() {
+            if (!walletData || !walletData._id) return;
+
+            try {
+                const res = await fetch(`${API}/wallets/${walletData._id}/transactions`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const data = await res.json();
+
+                const historyEl = document.getElementById('tx-history');
+
+                if (!data.transactions || data.transactions.length === 0) {
+                    historyEl.innerHTML = '<div class="text-gray-400 text-center py-8">No transactions yet</div>';
+                    return;
+                }
+
+                const html = data.transactions.map(tx => {
+                    const typeColors = {
+                        'sent': 'text-red-400',
+                        'received': 'text-green-400',
+                        'mining_reward': 'text-purple-400'
+                    };
+                    const typeIcons = {
+                        'sent': 'fa-arrow-up',
+                        'received': 'fa-arrow-down',
+                        'mining_reward': 'fa-cube'
+                    };
+
+                    return `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas ${typeIcons[tx.type]} ${typeColors[tx.type]}"></i>
+                                    <div>
+                                        <div class="font-bold capitalize">${tx.type.replace('_', ' ')}</div>
+                                        <div class="text-xs text-gray-500">${tx.hash.substring(0, 16)}...</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold ${typeColors[tx.type]}">${tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(4)} STRAT</div>
+                                    <div class="text-xs text-gray-400">${new Date(tx.timestamp).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                historyEl.innerHTML = html;
+            } catch(e) {
+                console.error('Failed to load transaction history:', e);
+                document.getElementById('tx-history').innerHTML = '<div class="text-red-400 text-center py-8">Failed to load transactions</div>';
+            }
+        }
+
+        async function sendTransaction() {
+            const address = document.getElementById('send-address').value;
+            const amount = parseFloat(document.getElementById('send-amount').value);
+            const password = document.getElementById('send-password').value;
+
+            try {
+                const res = await fetch(`${API}/transactions/send`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({fromWalletId: walletData._id, toAddress: address, amount, password})
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.message || data.error || 'Transaction failed');
+                }
+                alert('Transaction sent successfully!');
+                loadDashboard();
+            } catch(e) {
+                alert('Transaction error: ' + e.message);
+            }
+        }
+
+        async function deployContract() {
+            const code = document.getElementById('contract-code').value;
+            const password = document.getElementById('contract-password').value;
+
+            try {
+                await fetch(`${API}/contracts/deploy`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({walletId: walletData._id, code, password, gasLimit: 100000, gasPrice: 1})
+                });
+                alert('Contract deployed! Mine a block to activate it.');
+            } catch(e) {
+                alert('Deploy error: ' + e.message);
+            }
+        }
+
+        function showSection(name) {
+            document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('section-' + name).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+
+            // Load section-specific data
+            if (name === 'mine') {
+                loadMiningData();
+            } else if (name === 'bridge') {
+                loadBridgeInfo();
+                loadBridgeHistory();
+            } else if (name === 'buy') {
+                loadBuyPage();
+            } else if (name === 'analytics') {
+                loadAnalytics();
+            } else if (name === 'portfolio') {
+                loadPortfolio();
+            } else if (name === 'leaderboard') {
+                loadLeaderboards();
+            } else if (name === 'history') {
+                loadHistory();
+            }
+        }
+
+        let currentPrice = 0.01;
+
+        async function loadBuyPage() {
+            try {
+                const res = await fetch(`${API}/price/current`);
+                const data = await res.json();
+
+                if (data.success && data.price) {
+                    currentPrice = data.price.usd;
+                    document.getElementById('buy-price').textContent = '$' + currentPrice.toFixed(4);
+                }
+
+                if (walletData) {
+                    document.getElementById('buy-balance').textContent = walletData.balance.toFixed(2) + ' STRAT';
+                }
+            } catch(e) {
+                console.error('Failed to load buy page:', e);
+            }
+        }
+
+        function calculateSTRAT() {
+            const usdAmount = parseFloat(document.getElementById('buy-usd-amount').value) || 0;
+            const stratAmount = usdAmount / currentPrice;
+            document.getElementById('buy-strat-amount').textContent = stratAmount.toFixed(2) + ' STRAT';
+        }
+
+        function copyAddress() {
+            document.getElementById('wallet-address').select();
+            document.execCommand('copy');
+            alert('Address copied!');
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            location.reload();
+        }
+
+        async function loadBridgeInfo() {
+            try {
+                const res = await fetch(`${API}/bridge/info`);
+                const data = await res.json();
+                document.getElementById('bridge-address').value = data.bridgeAddress;
+                document.getElementById('exchange-rate').textContent = `1 SOL = ${data.exchangeRate} STRAT`;
+
+                if (data.bridgeFee) {
+                    document.getElementById('bridge-fee-display').textContent = `${data.bridgeFee}%`;
+                    document.getElementById('bridge-fee-display2').textContent = `${data.bridgeFee}%`;
+                }
+            } catch(e) {
+                console.error('Failed to load bridge info:', e);
+            }
+        }
+
+        function copyBridgeAddress() {
+            document.getElementById('bridge-address').select();
+            document.execCommand('copy');
+            alert('Bridge address copied!');
+        }
+
+        async function verifyBridge() {
+            const signature = document.getElementById('bridge-signature').value.trim();
+            const resultDiv = document.getElementById('bridge-result');
+
+            if (!signature) {
+                resultDiv.className = 'p-4 rounded-xl bg-red-900/20 border border-red-500/30';
+                resultDiv.textContent = 'Please enter a transaction signature';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/bridge/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ signature })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    resultDiv.className = 'p-4 rounded-xl bg-green-900/20 border border-green-500/30';
+                    resultDiv.innerHTML = `
+                        <p class="text-green-200 font-semibold mb-2">✓ Bridge Successful!</p>
+                        <p class="text-sm text-gray-300">Received: ${data.solReceived} SOL</p>
+                        <p class="text-sm text-gray-300">Credited: ${data.stratCredited} STRAT</p>
+                        <p class="text-sm text-gray-300">New Balance: ${data.newBalance} STRAT</p>
+                    `;
+                    document.getElementById('bridge-signature').value = '';
+                    loadDashboard();
+                    loadBridgeHistory();
+                } else {
+                    resultDiv.className = 'p-4 rounded-xl bg-red-900/20 border border-red-500/30';
+                    const errorMsg = data.details ? `${data.error}: ${data.details}` : (data.error || 'Bridge verification failed');
+                    resultDiv.textContent = errorMsg;
+                }
+
+                resultDiv.classList.remove('hidden');
+            } catch(e) {
+                resultDiv.className = 'p-4 rounded-xl bg-red-900/20 border border-red-500/30';
+                resultDiv.textContent = 'Error: ' + e.message;
+                resultDiv.classList.remove('hidden');
+            }
+        }
+
+        async function loadBridgeHistory() {
+            try {
+                const res = await fetch(`${API}/bridge/history`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const data = await res.json();
+
+                const transactions = data.transactions || [];
+                const html = transactions.length > 0
+                    ? transactions.map(tx => `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between">
+                                <div class="text-sm font-semibold">${tx.amount || 0} STRAT</div>
+                                <div class="text-xs text-gray-400">${new Date(tx.timestamp).toLocaleString()}</div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-2 font-mono">${(tx.hash || 'N/A').substring(0,40)}...</div>
+                        </div>
+                    `).join('')
+                    : '<div class="text-gray-500 text-center py-4">No bridge transactions yet</div>';
+
+                document.getElementById('bridge-history').innerHTML = html;
+            } catch(e) {
+                console.error('Failed to load bridge history:', e);
+                const historyEl = document.getElementById('bridge-history');
+                if (historyEl) {
+                    historyEl.innerHTML = '<div class="text-gray-500 text-center py-4">Failed to load bridge history</div>';
+                }
+            }
+        }
+
+        // Initialize chart
+        new Chart(document.getElementById('activityChart'), {
+            type: 'line',
+            data: { labels: ['','','','','',''], datasets: [{ data: [12,19,3,5,2,3], borderColor: '#14f195', backgroundColor: 'rgba(20,241,149,0.1)', tension: 0.4, fill: true }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
+        });
+
+        // Load bridge info on startup
+        loadBridgeInfo();
+
+        // Liquidity pool functions
+        let poolData = null;
+
+        async function loadPoolInfo() {
+            try {
+                const res = await fetch(`${API}/liquidity/pool`);
+                const data = await res.json();
+
+                if (data.success && data.pool) {
+                    poolData = data.pool;
+
+                    const tvl = (data.pool.solReserve * 140) + (data.pool.stratReserve * data.pool.priceUSD);
+                    document.getElementById('pool-tvl').textContent = '$' + tvl.toFixed(2);
+                    document.getElementById('pool-price').textContent = '$' + data.pool.priceUSD.toFixed(6);
+                    document.getElementById('pool-volume').textContent = '$' + (data.pool.volume24h * 140).toFixed(2);
+                    document.getElementById('pool-sol-reserve').textContent = data.pool.solReserve.toFixed(4) + ' SOL';
+                    document.getElementById('pool-strat-reserve').textContent = data.pool.stratReserve.toFixed(2) + ' STRAT';
+
+                    // Update real backing info
+                    document.getElementById('backed-sol').textContent = data.pool.solReserve.toFixed(4) + ' SOL';
+                    document.getElementById('backed-strat').textContent = data.pool.stratReserve.toFixed(2) + ' STRAT';
+                }
+            } catch (e) {
+                console.error('Failed to load pool info:', e);
+            }
+        }
+
+        async function loadUserPosition() {
+            try {
+                const res = await fetch(`${API}/liquidity/position`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (data.success && data.position) {
+                    const lpTokensEl = document.getElementById('user-lp-tokens');
+                    const poolShareEl = document.getElementById('user-pool-share');
+                    const solAmountEl = document.getElementById('user-sol-amount');
+                    const stratAmountEl = document.getElementById('user-strat-amount');
+                    const lpBalanceEl = document.getElementById('user-lp-balance');
+
+                    if (lpTokensEl) lpTokensEl.textContent = data.position.lpTokens.toFixed(4);
+                    if (poolShareEl) poolShareEl.textContent = data.position.poolShare + '%';
+                    if (solAmountEl) solAmountEl.textContent = data.position.solAmount.toFixed(4) + ' SOL';
+                    if (stratAmountEl) stratAmountEl.textContent = data.position.stratAmount.toFixed(2) + ' STRAT';
+                    if (lpBalanceEl) lpBalanceEl.textContent = data.position.lpTokens.toFixed(4);
+                }
+            } catch (e) {
+                console.error('Failed to load user position:', e);
+            }
+        }
+
+        function switchLiquidityTab(tab) {
+            if (tab === 'add') {
+                document.getElementById('tab-add-liq').classList.remove('btn-secondary');
+                document.getElementById('tab-add-liq').classList.add('btn-primary');
+                document.getElementById('tab-remove-liq').classList.remove('btn-primary');
+                document.getElementById('tab-remove-liq').classList.add('btn-secondary');
+                document.getElementById('add-liquidity-form').classList.remove('hidden');
+                document.getElementById('remove-liquidity-form').classList.add('hidden');
+            } else {
+                document.getElementById('tab-remove-liq').classList.remove('btn-secondary');
+                document.getElementById('tab-remove-liq').classList.add('btn-primary');
+                document.getElementById('tab-add-liq').classList.remove('btn-primary');
+                document.getElementById('tab-add-liq').classList.add('btn-secondary');
+                document.getElementById('remove-liquidity-form').classList.remove('hidden');
+                document.getElementById('add-liquidity-form').classList.add('hidden');
+            }
+        }
+
+        function calculateStratNeeded() {
+            const solAmount = parseFloat(document.getElementById('add-sol-amount').value) || 0;
+            if (!poolData || solAmount <= 0) {
+                document.getElementById('add-strat-amount').value = '';
+                document.getElementById('lp-tokens-to-receive').textContent = '0 LP tokens';
+                return;
+            }
+
+            const ratio = poolData.stratReserve / poolData.solReserve;
+            const stratNeeded = solAmount * ratio;
+            document.getElementById('add-strat-amount').value = stratNeeded.toFixed(4);
+
+            const lpTokens = Math.sqrt(solAmount * stratNeeded);
+            document.getElementById('lp-tokens-to-receive').textContent = lpTokens.toFixed(4) + ' LP tokens';
+        }
+
+        function calculateRemoveOutput() {
+            const lpTokens = parseFloat(document.getElementById('remove-lp-amount').value) || 0;
+            if (!poolData || lpTokens <= 0) {
+                document.getElementById('remove-sol-output').textContent = '0';
+                document.getElementById('remove-strat-output').textContent = '0';
+                return;
+            }
+
+            const share = lpTokens / poolData.totalLPTokens;
+            const solOut = poolData.solReserve * share;
+            const stratOut = poolData.stratReserve * share;
+
+            document.getElementById('remove-sol-output').textContent = solOut.toFixed(4) + ' SOL';
+            document.getElementById('remove-strat-output').textContent = stratOut.toFixed(2) + ' STRAT';
+        }
+
+        async function addLiquidity() {
+            try {
+                const solAmount = parseFloat(document.getElementById('add-sol-amount').value);
+                const stratAmount = parseFloat(document.getElementById('add-strat-amount').value);
+
+                if (!solAmount || !stratAmount || solAmount <= 0 || stratAmount <= 0) {
+                    alert('Please enter valid amounts');
+                    return;
+                }
+
+                const res = await fetch(`${API}/liquidity/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ solAmount, stratAmount })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`Success! You received ${data.lpTokens.toFixed(4)} LP tokens\nPool share: ${data.poolShare}%`);
+                    document.getElementById('add-sol-amount').value = '';
+                    document.getElementById('add-strat-amount').value = '';
+                    await loadPoolInfo();
+                    await loadUserPosition();
+                    await loadDashboard();
+                } else {
+                    alert('Error: ' + (data.message || data.error));
+                }
+            } catch (e) {
+                console.error('Add liquidity error:', e);
+                alert('Failed to add liquidity: ' + e.message);
+            }
+        }
+
+        async function removeLiquidity() {
+            try {
+                const lpTokens = parseFloat(document.getElementById('remove-lp-amount').value);
+
+                if (!lpTokens || lpTokens <= 0) {
+                    alert('Please enter valid LP token amount');
+                    return;
+                }
+
+                const res = await fetch(`${API}/liquidity/remove`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ lpTokens })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`Success! Received:\n${data.solReturned.toFixed(4)} SOL\n${data.stratReturned.toFixed(2)} STRAT`);
+                    document.getElementById('remove-lp-amount').value = '';
+                    await loadPoolInfo();
+                    await loadUserPosition();
+                    await loadDashboard();
+                } else {
+                    alert('Error: ' + (data.message || data.error));
+                }
+            } catch (e) {
+                console.error('Remove liquidity error:', e);
+                alert('Failed to remove liquidity: ' + e.message);
+            }
+        }
+
+        // Load pool info when switching to liquidity section
+        const originalShowSection = showSection;
+        showSection = function(name) {
+            originalShowSection(name);
+            if (name === 'liquidity') {
+                loadPoolInfo();
+                loadUserPosition();
+            }
+        };
+
+        // Staking functions
+        let stakingInfo = null;
+
+        async function loadStakingInfo() {
+            try {
+                const res = await fetch(`${API}/staking/info`);
+                const data = await res.json();
+                stakingInfo = data;
+
+                // Display lock periods
+                const periodsHtml = data.lockPeriods.map(p => `
+                    <div class="glass p-4 rounded-xl text-center">
+                        <div class="text-sm text-gray-400 capitalize">${p.name}</div>
+                        <div class="text-2xl font-bold text-green-400">${p.apy}%</div>
+                        <div class="text-xs text-gray-500 mt-1">${p.estimatedDays} days</div>
+                    </div>
+                `).join('');
+                document.getElementById('lock-periods').innerHTML = periodsHtml;
+
+                // Populate select
+                const selectHtml = data.lockPeriods.map(p =>
+                    `<option value="${p.name}">${p.name.charAt(0).toUpperCase() + p.name.slice(1)} - ${p.apy}% APY (~${p.estimatedDays} days)</option>`
+                ).join('');
+                document.getElementById('stake-period').innerHTML = '<option value="">Select period...</option>' + selectHtml;
+
+            } catch(e) {
+                console.error('Failed to load staking info:', e);
+            }
+        }
+
+        async function loadUserStakes() {
+            if (!walletData) return;
+
+            try {
+                const res = await fetch(`${API}/staking/address/${walletData.address}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    // Update stats
+                    document.getElementById('stake-balance').textContent = data.stats.totalStaked.toFixed(2) + ' STRAT';
+                    document.getElementById('stake-rewards').textContent = data.stats.totalRewards.toFixed(4) + ' STRAT';
+                    document.getElementById('stake-count').textContent = data.stats.activeStakes;
+
+                    // Display stakes
+                    if (data.stakes.length === 0) {
+                        document.getElementById('active-stakes-list').innerHTML =
+                            '<div class="text-center text-gray-400 py-8">No active stakes. Create one above!</div>';
+                    } else {
+                        const stakesHtml = data.stakes.map(s => `
+                            <div class="bg-white/5 p-6 rounded-xl">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <div class="text-2xl font-bold text-green-400">${s.amount} STRAT</div>
+                                        <div class="text-sm text-gray-400">${s.apy}% APY • ${s.status}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-purple-400">+${s.totalRewards.toFixed(4)} STRAT</div>
+                                        <div class="text-xs text-gray-500">Rewards</div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <div class="text-gray-400">Unlock Block</div>
+                                        <div class="font-bold">#${s.unlockBlock}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-gray-400">Blocks Remaining</div>
+                                        <div class="font-bold">${s.blocksRemaining}</div>
+                                    </div>
+                                </div>
+                                ${s.canUnlock ? `
+                                    <div class="mt-4 space-x-2">
+                                        <button onclick="unlockStake('${s.id}')" class="btn-primary px-4 py-2 rounded-lg">
+                                            <i class="fas fa-unlock mr-2"></i> Unlock
+                                        </button>
+                                    </div>
+                                ` : ''}
+                                ${s.status === 'unlocked' ? `
+                                    <button onclick="withdrawStake('${s.id}')" class="btn-primary px-4 py-2 rounded-lg mt-4">
+                                        <i class="fas fa-money-bill-wave mr-2"></i> Withdraw
+                                    </button>
+                                ` : ''}
+                                ${s.status === 'active' && s.pendingRewards > 0.001 ? `
+                                    <button onclick="claimRewards('${s.id}')" class="btn-secondary px-4 py-2 rounded-lg mt-4">
+                                        <i class="fas fa-gift mr-2"></i> Claim Rewards (${s.pendingRewards.toFixed(4)} STRAT)
+                                    </button>
+                                ` : ''}
+                            </div>
+                        `).join('');
+                        document.getElementById('active-stakes-list').innerHTML = stakesHtml;
+                    }
+                }
+            } catch(e) {
+                console.error('Failed to load stakes:', e);
+            }
+        }
+
+        async function createStake() {
+            const amount = parseFloat(document.getElementById('stake-amount').value);
+            const period = document.getElementById('stake-period').value;
+
+            if (!amount || amount < 1) {
+                alert('Please enter an amount (min 1 STRAT)');
+                return;
+            }
+
+            if (!period) {
+                alert('Please select a lock period');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/staking/stake`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        address: walletData.address,
+                        amount,
+                        lockPeriod: period
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`✓ Stake created!\n\nAmount: ${amount} STRAT\nAPY: ${data.stake.apy}%\nEstimated Reward: ${data.stake.estimatedReward} STRAT`);
+                    document.getElementById('stake-amount').value = '';
+                    document.getElementById('stake-period').value = '';
+                    await loadUserStakes();
+                    await loadDashboard();
+                } else {
+                    alert('Error: ' + (data.error || data.message));
+                }
+            } catch(e) {
+                alert('Failed to create stake: ' + e.message);
+            }
+        }
+
+        async function unlockStake(stakeId) {
+            try {
+                const res = await fetch(`${API}/staking/unlock/${stakeId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert('✓ Stake unlocked! You can now withdraw your tokens + rewards.');
+                    await loadUserStakes();
+                } else {
+                    alert('Error: ' + (data.error || data.message));
+                }
+            } catch(e) {
+                alert('Failed to unlock: ' + e.message);
+            }
+        }
+
+        async function withdrawStake(stakeId) {
+            try {
+                const res = await fetch(`${API}/staking/withdraw/${stakeId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✓ Withdrawn!\n\nPrincipal: ${data.withdrawal.principal} STRAT\nRewards: ${data.withdrawal.rewards} STRAT\nTotal: ${data.withdrawal.total} STRAT`);
+                    await loadUserStakes();
+                    await loadDashboard();
+                } else {
+                    alert('Error: ' + (data.error || data.message));
+                }
+            } catch(e) {
+                alert('Failed to withdraw: ' + e.message);
+            }
+        }
+
+        async function claimRewards(stakeId) {
+            try {
+                const res = await fetch(`${API}/staking/claim/${stakeId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✓ Claimed ${data.rewards.toFixed(4)} STRAT in rewards!`);
+                    await loadUserStakes();
+                    await loadDashboard();
+                } else {
+                    alert('Error: ' + (data.error || data.message));
+                }
+            } catch(e) {
+                alert('Failed to claim: ' + e.message);
+            }
+        }
+
+        // Mempool functions
+        async function loadMempoolInfo() {
+            try {
+                const res = await fetch(`${API}/mempool/stats`);
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('mempool-count').textContent = data.stats.count;
+                    document.getElementById('mempool-fees').textContent = data.stats.totalFees.toFixed(4) + ' STRAT';
+                    document.getElementById('mempool-avg-fee').textContent = data.stats.avgFeeRate.toFixed(6);
+                    document.getElementById('mempool-util').textContent = data.stats.utilization;
+                }
+
+                // Load fee recommendations
+                const feeRes = await fetch(`${API}/mempool/fee-rate?priority=medium`);
+                const feeData = await feeRes.json();
+
+                if (feeData.success) {
+                    document.getElementById('fee-slow').textContent = feeData.currentFeeRates.low.toFixed(6);
+                    document.getElementById('fee-standard').textContent = feeData.currentFeeRates.medium.toFixed(6);
+                    document.getElementById('fee-fast').textContent = feeData.currentFeeRates.high.toFixed(6);
+                }
+
+                // Load mempool transactions
+                const txsRes = await fetch(`${API}/mempool/transactions?limit=20`);
+                const txsData = await txsRes.json();
+
+                if (txsData.success && txsData.transactions.length > 0) {
+                    const txsHtml = txsData.transactions.map((tx, idx) => `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-mono text-sm">#${idx + 1} • ${tx.hash.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-500 mt-1">Priority: ${tx.priority.toFixed(2)} • Fee Rate: ${tx.feeRate.toFixed(6)}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm text-green-400">Age: ${Math.floor(tx.age / 1000)}s</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('mempool-txs-list').innerHTML = txsHtml;
+                } else {
+                    document.getElementById('mempool-txs-list').innerHTML = '<div class="text-center text-gray-400 py-8">No pending transactions</div>';
+                }
+
+            } catch(e) {
+                console.error('Failed to load mempool:', e);
+            }
+        }
+
+        // Update showSection to load data
+        const _originalShowSection = showSection;
+        showSection = function(name) {
+            _originalShowSection(name);
+
+            if (name === 'staking') {
+                loadStakingInfo();
+                loadUserStakes();
+            } else if (name === 'mempool') {
+                loadMempoolInfo();
+            } else if (name === 'analytics') {
+                loadAnalytics();
+            } else if (name === 'portfolio') {
+                loadPortfolio();
+            } else if (name === 'leaderboard') {
+                loadLeaderboards();
+            } else if (name === 'history') {
+                loadHistory();
+            }
+        };
+
+        // Analytics Functions
+        let charts = {};
+
+        async function loadAnalytics() {
+            try {
+                const res = await fetch(`${API}/explorer/stats`);
+                const data = await res.json();
+
+                if (data.success) {
+                    // Handle hashrate - could be string or number
+                    const hashrate = typeof data.stats.hashrate === 'string' ? parseFloat(data.stats.hashrate) : (data.stats.hashrate || 0);
+                    document.getElementById('analytics-hashrate').textContent = hashrate.toFixed(2);
+
+                    // Handle avgBlockTime - convert milliseconds to seconds
+                    const blockTime = (data.stats.avgBlockTime || 0) / 1000;
+                    document.getElementById('analytics-blocktime').textContent = blockTime.toFixed(1);
+
+                    // Get pending transactions count
+                    const txs24h = data.stats.pendingTransactions || 0;
+                    document.getElementById('analytics-txs').textContent = txs24h;
+
+                    // Get staked amount from staking stats
+                    try {
+                        const stakingRes = await fetch(`${API}/staking/stats`);
+                        const stakingData = await stakingRes.json();
+                        const tvl = stakingData.success ? (stakingData.stats.totalStaked || 0) : 0;
+                        document.getElementById('analytics-tvl').textContent = tvl.toFixed(2);
+                    } catch(e) {
+                        document.getElementById('analytics-tvl').textContent = '0.00';
+                    }
+                }
+
+                // Load chart data
+                await loadCharts();
+            } catch(e) {
+                console.error('Failed to load analytics:', e);
+                // Set default values on error
+                document.getElementById('analytics-hashrate').textContent = '0.00';
+                document.getElementById('analytics-blocktime').textContent = '0.0';
+                document.getElementById('analytics-txs').textContent = '0';
+                document.getElementById('analytics-tvl').textContent = '0.00';
+            }
+        }
+
+        async function loadCharts() {
+            try {
+                // Difficulty Chart
+                const diffRes = await fetch(`${API}/explorer/charts/difficulty?days=30`);
+                const diffData = await diffRes.json();
+
+                if (diffData.success && charts.difficultyChart) {
+                    charts.difficultyChart.destroy();
+                }
+
+                const diffCtx = document.getElementById('difficulty-chart');
+                charts.difficultyChart = new Chart(diffCtx, {
+                    type: 'line',
+                    data: {
+                        labels: diffData.data?.map(d => new Date(d.date).toLocaleDateString()) || [],
+                        datasets: [{
+                            label: 'Difficulty',
+                            data: diffData.data?.map(d => d.value) || [],
+                            borderColor: '#14f195',
+                            backgroundColor: 'rgba(20, 241, 149, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } },
+                        scales: {
+                            x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        }
+                    }
+                });
+
+                // Transactions Chart
+                const txRes = await fetch(`${API}/explorer/charts/transactions?days=30`);
+                const txData = await txRes.json();
+
+                if (charts.transactionsChart) charts.transactionsChart.destroy();
+
+                const txCtx = document.getElementById('transactions-chart');
+                charts.transactionsChart = new Chart(txCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: txData.data?.map(d => new Date(d.date).toLocaleDateString()) || [],
+                        datasets: [{
+                            label: 'Transactions',
+                            data: txData.data?.map(d => d.value) || [],
+                            backgroundColor: '#9945ff',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } },
+                        scales: {
+                            x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        }
+                    }
+                });
+
+                // Price Chart - Mock data for now
+                if (charts.priceChart) charts.priceChart.destroy();
+                const priceCtx = document.getElementById('price-chart');
+                charts.priceChart = new Chart(priceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 30}, (_, i) => `Day ${i+1}`),
+                        datasets: [{
+                            label: 'STRAT/SOL',
+                            data: Array.from({length: 30}, () => 0.1 + Math.random() * 0.05),
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } },
+                        scales: {
+                            x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        }
+                    }
+                });
+
+                // Distribution Chart
+                const richRes = await fetch(`${API}/explorer/richlist?limit=5`);
+                const richData = await richRes.json();
+
+                if (charts.distributionChart) charts.distributionChart.destroy();
+                const distCtx = document.getElementById('distribution-chart');
+                charts.distributionChart = new Chart(distCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: richData.richList?.map((a, i) => `#${i+1} ${a.address.substring(0, 8)}...`) || ['No data'],
+                        datasets: [{
+                            data: richData.richList?.map(a => a.balance) || [1],
+                            backgroundColor: ['#14f195', '#9945ff', '#f59e0b', '#3b82f6', '#ef4444']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#fff' } } }
+                    }
+                });
+
+            } catch(e) {
+                console.error('Failed to load charts:', e);
+            }
+        }
+
+        // Portfolio Functions
+        async function loadPortfolio() {
+            if (!walletData) {
+                console.log('No wallet data available for portfolio');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/explorer/address/${walletData.address}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    // API returns balance directly at root level, not nested
+                    const balance = data.balance || 0;
+                    const totalReceived = data.totalReceived || 0;
+
+                    // Get staked balance from wallet info
+                    let staked = 0;
+                    try {
+                        const walletRes = await fetch(`${API}/wallet/info`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (walletRes.ok) {
+                            const walletInfo = await walletRes.json();
+                            staked = walletInfo.wallet?.stakedBalance || 0;
+                        } else {
+                            console.log('Wallet info endpoint not available (404), using 0 for staked balance');
+                        }
+                    } catch(e) {
+                        console.error('Could not fetch staked balance:', e);
+                    }
+
+                    const totalEarned = Math.max(0, totalReceived);
+                    const usdValue = balance * 0.01; // Mock price $0.01
+
+                    document.getElementById('portfolio-balance').textContent = balance.toFixed(2) + ' STRAT';
+                    document.getElementById('portfolio-usd').textContent = '$' + usdValue.toFixed(2);
+                    document.getElementById('portfolio-staked').textContent = staked.toFixed(2) + ' STRAT';
+                    document.getElementById('portfolio-earned').textContent = totalEarned.toFixed(2) + ' STRAT';
+                    document.getElementById('portfolio-value').textContent = '$' + ((balance + staked) * 0.01).toFixed(2);
+
+                    // Calculate change percentage (mock for now)
+                    document.getElementById('portfolio-change').textContent = '+0%';
+                    document.getElementById('portfolio-change').className = 'text-xs text-green-400';
+
+                    // Asset breakdown
+                    const assets = [
+                        { name: 'Liquid STRAT', amount: balance, percent: (balance / (balance + staked) * 100) || 0 },
+                        { name: 'Staked STRAT', amount: staked, percent: (staked / (balance + staked) * 100) || 0 }
+                    ];
+
+                    const assetsHtml = assets.map(asset => `
+                        <div class="bg-white/5 p-4 rounded-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold">${asset.name}</span>
+                                <span class="text-green-400">${asset.amount.toFixed(2)} STRAT</span>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-2">
+                                <div class="bg-gradient-primary h-2 rounded-full" style="width: ${asset.percent}%"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('portfolio-assets').innerHTML = assetsHtml;
+
+                    // Balance history chart
+                    if (charts.balanceHistory) charts.balanceHistory.destroy();
+                    const balCtx = document.getElementById('balance-history-chart');
+                    charts.balanceHistory = new Chart(balCtx, {
+                        type: 'line',
+                        data: {
+                            labels: Array.from({length: 30}, (_, i) => `Day ${i+1}`),
+                            datasets: [{
+                                label: 'Balance',
+                                data: Array.from({length: 30}, (_, i) => balance * (0.8 + i * 0.01)),
+                                borderColor: '#14f195',
+                                backgroundColor: 'rgba(20, 241, 149, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { labels: { color: '#fff' } } },
+                            scales: {
+                                x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                                y: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                            }
+                        }
+                    });
+                }
+            } catch(e) {
+                console.error('Failed to load portfolio:', e);
+            }
+        }
+
+        // Leaderboard Functions
+        let currentLeaderboard = 'miners';
+
+        function switchLeaderboard(type) {
+            currentLeaderboard = type;
+
+            // Update button styles
+            document.getElementById('lb-miners-btn').className = type === 'miners' ? 'btn-primary px-6 py-3 rounded-xl' : 'btn-secondary px-6 py-3 rounded-xl';
+            document.getElementById('lb-stakers-btn').className = type === 'stakers' ? 'btn-primary px-6 py-3 rounded-xl' : 'btn-secondary px-6 py-3 rounded-xl';
+            document.getElementById('lb-holders-btn').className = type === 'holders' ? 'btn-primary px-6 py-3 rounded-xl' : 'btn-secondary px-6 py-3 rounded-xl';
+
+            // Show/hide sections
+            document.getElementById('leaderboard-miners').className = type === 'miners' ? 'glass p-6 rounded-xl' : 'glass p-6 rounded-xl hidden';
+            document.getElementById('leaderboard-stakers').className = type === 'stakers' ? 'glass p-6 rounded-xl' : 'glass p-6 rounded-xl hidden';
+            document.getElementById('leaderboard-holders').className = type === 'holders' ? 'glass p-6 rounded-xl' : 'glass p-6 rounded-xl hidden';
+
+            loadLeaderboards();
+        }
+
+        async function loadLeaderboards() {
+            try {
+                if (currentLeaderboard === 'miners') {
+                    const res = await fetch(`${API}/explorer/mining?days=30`);
+                    const data = await res.json();
+
+                    if (data.success && data.miners && data.miners.length > 0) {
+                        const html = data.miners.map((miner, idx) => `
+                            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
+                                <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
+                                <div class="flex-1">
+                                    <div class="font-mono text-sm">${miner.address.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-400">${miner.blocks} blocks mined</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-green-400">${(miner.totalReward + miner.totalFees).toFixed(2)} STRAT</div>
+                                    <div class="text-xs text-gray-500">Rewards</div>
+                                </div>
+                            </div>
+                        `).join('');
+                        document.getElementById('miners-list').innerHTML = html;
+                    } else {
+                        document.getElementById('miners-list').innerHTML = '<div class="text-center text-gray-400 py-8">No miners found. Start mining to appear on the leaderboard!</div>';
+                    }
+                } else if (currentLeaderboard === 'stakers') {
+                    const res = await fetch(`${API}/staking/leaderboard?limit=10`);
+                    const data = await res.json();
+
+                    if (data.success && data.stakers && data.stakers.length > 0) {
+                        const html = data.stakers.map((staker, idx) => `
+                            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
+                                <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
+                                <div class="flex-1">
+                                    <div class="font-mono text-sm">${staker.address.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-400">${staker.staked.toFixed(2)} STRAT staked</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-purple-400">${staker.rewards.toFixed(2)} STRAT</div>
+                                    <div class="text-xs text-gray-500">Rewards</div>
+                                </div>
+                            </div>
+                        `).join('');
+                        document.getElementById('stakers-list').innerHTML = html;
+                    } else {
+                        document.getElementById('stakers-list').innerHTML = '<div class="text-center text-gray-400 py-8">No stakers found. Create a stake to appear on the leaderboard!</div>';
+                    }
+                } else if (currentLeaderboard === 'holders') {
+                    const res = await fetch(`${API}/explorer/richlist?limit=10`);
+                    const data = await res.json();
+
+                    if (data.success && data.richList) {
+                        const html = data.richList.map((holder, idx) => `
+                            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4">
+                                <div class="text-3xl font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}">#${idx + 1}</div>
+                                <div class="flex-1">
+                                    <div class="font-mono text-sm">${holder.address.substring(0, 16)}...</div>
+                                    <div class="text-xs text-gray-400">${((holder.balance / data.totalSupply) * 100).toFixed(2)}% of supply</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-green-400">${holder.balance.toFixed(2)} STRAT</div>
+                                    <div class="text-xs text-gray-500">${(holder.balance * 0.01).toFixed(2)} USD</div>
+                                </div>
+                            </div>
+                        `).join('');
+                        document.getElementById('holders-list').innerHTML = html;
+                    }
+                }
+            } catch(e) {
+                console.error('Failed to load leaderboards:', e);
+            }
+        }
+
+        // Transaction History Functions
+        let historyPage = 1;
+
+        async function loadHistory(page = 1) {
+            if (!walletData) return;
+            historyPage = page;
+
+            try {
+                const filter = document.getElementById('history-filter').value;
+                const search = document.getElementById('history-search').value;
+
+                const res = await fetch(`${API}/explorer/address/${walletData.address}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    // API returns transactions directly, not nested
+                    let txs = data.transactions || [];
+
+                    // Apply filter
+                    if (filter !== 'all') {
+                        txs = txs.filter(tx => {
+                            if (filter === 'sent') return tx.from === walletData.address;
+                            if (filter === 'received') return tx.to === walletData.address && tx.type !== 'mining' && tx.type !== 'staking';
+                            if (filter === 'mining') return tx.type === 'mining' || tx.from === 'MINING_REWARD';
+                            if (filter === 'staking') return tx.type === 'staking' || tx.from === 'STAKING_REWARD';
+                            return true;
+                        });
+                    }
+
+                    // Apply search
+                    if (search) {
+                        txs = txs.filter(tx =>
+                            (tx.hash && tx.hash.includes(search)) ||
+                            (tx.from && tx.from.includes(search)) ||
+                            (tx.to && tx.to.includes(search))
+                        );
+                    }
+
+                    // Pagination
+                    const perPage = 20;
+                    const start = (page - 1) * perPage;
+                    const paginatedTxs = txs.slice(start, start + perPage);
+
+                    if (paginatedTxs.length === 0) {
+                        document.getElementById('history-list').innerHTML = '<div class="text-center text-gray-400 py-8">No transactions found</div>';
+                    } else {
+                        const html = paginatedTxs.map(tx => {
+                            const isSent = tx.from === walletData.address;
+                            const isMining = tx.type === 'mining' || tx.from === 'MINING_REWARD';
+                            const isStaking = tx.type === 'staking' || tx.from === 'STAKING_REWARD';
+
+                            return `
+                                <div class="bg-white/5 p-4 rounded-xl">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <i class="fas fa-${isMining ? 'cube' : isStaking ? 'coins' : isSent ? 'arrow-up' : 'arrow-down'} ${isMining ? 'text-blue-400' : isStaking ? 'text-purple-400' : isSent ? 'text-red-400' : 'text-green-400'}"></i>
+                                                <span class="font-bold">${isMining ? 'Mining Reward' : isStaking ? 'Staking Reward' : isSent ? 'Sent' : 'Received'}</span>
+                                            </div>
+                                            <div class="font-mono text-xs text-gray-400">Hash: ${(tx.hash || 'N/A').substring(0, 32)}...</div>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                ${isMining || isStaking ? 'From: Blockchain Network' : isSent ? 'To: ' + ((tx.to || 'N/A').substring(0, 16)) + '...' : 'From: ' + ((tx.from || 'Unknown').substring(0, 16)) + '...'}
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-lg font-bold ${isSent ? 'text-red-400' : 'text-green-400'}">
+                                                ${isSent && !isMining && !isStaking ? '-' : '+'}${(tx.amount || 0).toFixed(4)} STRAT
+                                            </div>
+                                            <div class="text-xs text-gray-500">${new Date(tx.timestamp || Date.now()).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        document.getElementById('history-list').innerHTML = html;
+                    }
+
+                    document.getElementById('history-page-num').textContent = page;
+                }
+            } catch(e) {
+                console.error('Failed to load history:', e);
+                document.getElementById('history-list').innerHTML = '<div class="text-center text-red-400 py-8">Failed to load transactions</div>';
+            }
+        }
+
+        // Notification System
+        function showNotification(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+
+            const colors = {
+                success: '#14f195',
+                error: '#ef4444',
+                warning: '#f59e0b',
+                info: '#3b82f6'
+            };
+
+            toast.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fas ${icons[type]} text-xl" style="color: ${colors[type]}"></i>
+                    <div class="flex-1">
+                        <div class="font-semibold">${message}</div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // WebSocket connection for real-time notifications
+        let socket = null;
+
+        function connectWebSocket() {
+            try {
+                socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/');
+
+                socket.on('connect', () => {
+                    console.log('WebSocket connected');
+
+                    if (walletData) {
+                        socket.emit('subscribe_address', walletData.address);
+                        socket.emit('subscribe_blocks');
+                        socket.emit('subscribe_mempool');
+                    }
+                });
+
+                socket.on('new_block', (data) => {
+                    showNotification(`New block #${data.index} mined by ${data.miner.substring(0, 16)}...`, 'info', 4000);
+                    loadDashboard();
+                });
+
+                socket.on('address_balance', (data) => {
+                    if (data.address === walletData?.address) {
+                        const changeText = data.change >= 0 ? `+${data.change.toFixed(4)}` : data.change.toFixed(4);
+                        showNotification(`Balance updated: ${changeText} STRAT`, 'success', 5000);
+                        loadDashboard();
+                    }
+                });
+
+                socket.on('stake_created', (data) => {
+                    if (data.address === walletData?.address) {
+                        showNotification(`Stake created: ${data.amount} STRAT at ${data.apy}% APY`, 'success', 6000);
+                    }
+                });
+
+                socket.on('rewards_claimed', (data) => {
+                    if (data.address === walletData?.address) {
+                        showNotification(`Rewards claimed: +${data.rewards.toFixed(4)} STRAT`, 'success', 6000);
+                    }
+                });
+
+                socket.on('stake_unlocked', (data) => {
+                    if (data.address === walletData?.address) {
+                        showNotification(`Stake unlocked! You can now withdraw ${data.amount} STRAT + rewards`, 'info', 6000);
+                    }
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('WebSocket disconnected');
+                    setTimeout(connectWebSocket, 5000); // Reconnect after 5 seconds
+                });
+
+            } catch(e) {
+                console.error('WebSocket connection failed:', e);
+            }
+        }
+
+        // Replace alert calls with notifications
+        const originalAlert = window.alert;
+        window.alert = function(message) {
+            if (message.startsWith('✓')) {
+                showNotification(message.replace('✓ ', ''), 'success');
+            } else if (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed')) {
+                showNotification(message, 'error');
+            } else {
+                showNotification(message, 'info');
+            }
+        };
+
+        // Load staking info on startup
+        loadStakingInfo();
+
+        // Connect WebSocket after login
+        if (token && walletData) {
+            connectWebSocket();
+        }
+
+        setInterval(loadDashboard, 10000);
+    </script>
+</body>
+</html>

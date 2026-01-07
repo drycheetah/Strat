@@ -1,15 +1,37 @@
 const Wallet = require('../models/Wallet');
+const SmartContract = require('../models/SmartContract');
 const { Transaction } = require('../src/transaction');
 const logger = require('../utils/logger');
 const { estimateGas, calculateGasPrice } = require('../src/gas');
+const crypto = require('crypto');
 
 /**
  * Deploy smart contract
  */
 const deployContract = async (req, res) => {
   try {
-    const { walletId, code, password, gasLimit, gasPrice } = req.body;
+    const {
+      walletId,
+      code,
+      abi,
+      bytecode,
+      name,
+      description,
+      password,
+      gasLimit,
+      gasPrice,
+      tags = [],
+      isPublic = false
+    } = req.body;
     const blockchain = req.blockchain;
+
+    // Validate required fields
+    if (!code || !abi || !bytecode || !name) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'code, abi, bytecode, and name are required'
+      });
+    }
 
     const wallet = await Wallet.findOne({
       _id: walletId,
@@ -31,15 +53,45 @@ const deployContract = async (req, res) => {
       });
     }
 
+    // Estimate gas if not provided
+    const estimatedGas = gasLimit || estimateGas(code, {}, {}, {});
+    const finalGasPrice = gasPrice || 1;
+
     // Create contract deployment transaction
     const tx = Transaction.createContractDeployTx(
       wallet.address,
       code,
-      gasLimit || 100000,
-      gasPrice || 1
+      estimatedGas,
+      finalGasPrice
     );
 
     tx.hash = tx.calculateHash();
+
+    // Generate contract address (simplified - in reality, this would be deterministic)
+    const contractAddress = '0x' + crypto.randomBytes(20).toString('hex');
+
+    // Create smart contract record
+    const smartContract = new SmartContract({
+      address: contractAddress,
+      name,
+      owner: req.user._id,
+      deployerAddress: wallet.address,
+      deploymentTxHash: tx.hash,
+      bytecode,
+      abi: typeof abi === 'string' ? JSON.parse(abi) : abi,
+      sourceCode: code,
+      deploymentBlockNumber: blockchain.chain.length,
+      gasUsed: estimatedGas,
+      gasPrice: finalGasPrice,
+      transactionFee: estimatedGas * finalGasPrice,
+      description,
+      tags,
+      isPublic,
+      deploymentWallet: walletId,
+      network: process.env.NETWORK || 'mainnet'
+    });
+
+    await smartContract.save();
 
     // Add to blockchain
     blockchain.addTransaction(tx);
@@ -52,21 +104,27 @@ const deployContract = async (req, res) => {
     if (req.io) {
       req.io.emit('contract_deployed', {
         deployer: wallet.address,
-        transactionHash: tx.hash
+        contractAddress,
+        transactionHash: tx.hash,
+        contractName: name
       });
     }
 
-    logger.info(`Contract deployment initiated by ${wallet.address}`);
+    logger.info(`Contract '${name}' deployment initiated by ${wallet.address} at ${contractAddress}`);
 
-    res.json({
+    res.status(201).json({
       success: true,
       message: 'Contract deployment transaction created',
-      transaction: {
-        hash: tx.hash,
-        from: wallet.address,
-        gasLimit,
-        gasPrice,
-        status: 'pending'
+      contract: {
+        address: contractAddress,
+        name,
+        deployerAddress: wallet.address,
+        transactionHash: tx.hash,
+        gasUsed: estimatedGas,
+        gasPrice: finalGasPrice,
+        deploymentFee: estimatedGas * finalGasPrice,
+        status: 'pending',
+        deployedAt: smartContract.deployedAt
       }
     });
   } catch (error) {
@@ -355,6 +413,329 @@ const getGasPrice = async (req, res) => {
   }
 };
 
+/**
+ * Verify contract on chain
+ */
+const verifyContract = async (req, res) => {
+  try {
+    const { contractId, compilerVersion, optimized, contractCode } = req.body;
+
+    const contract = await SmartContract.findOne({
+      _id: contractId,
+      owner: req.user._id
+    });
+
+    if (!contract) {
+      return res.status(404).json({
+        error: 'Contract not found'
+      });
+    }
+
+    // Verify source code matches
+    if (contractCode && contractCode.trim() !== contract.sourceCode.trim()) {
+      return res.status(400).json({
+        error: 'Source code verification failed',
+        message: 'Provided source code does not match the deployed contract'
+      });
+    }
+
+    // Verify contract
+    await contract.verify(compilerVersion, optimized);
+
+    logger.info(`Contract ${contract.address} verified by owner ${req.user._id}`);
+
+    res.json({
+      success: true,
+      message: 'Contract verified successfully',
+      contract: {
+        address: contract.address,
+        name: contract.name,
+        verified: contract.verified,
+        verificationDate: contract.verificationDate,
+        compilerVersion: contract.verificationCompiler
+      }
+    });
+  } catch (error) {
+    logger.error(`Verify contract error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to verify contract',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get user's contracts
+ */
+const getUserContracts = async (req, res) => {
+  try {
+    const { verified, network, isPublic } = req.query;
+
+    const filters = {};
+    if (verified !== undefined) filters.verified = verified === 'true';
+    if (network) filters.network = network;
+    if (isPublic !== undefined) filters.isPublic = isPublic === 'true';
+
+    const contracts = await SmartContract.findByOwner(req.user._id, filters);
+
+    res.json({
+      success: true,
+      contracts: contracts.map(c => ({
+        id: c._id,
+        address: c.address,
+        name: c.name,
+        verified: c.verified,
+        deployedAt: c.deployedAt,
+        gasUsed: c.gasUsed,
+        deploymentFee: c.transactionFee,
+        interactionCount: c.interactionCount,
+        lastInteraction: c.lastInteraction,
+        balance: c.balance
+      })),
+      count: contracts.length
+    });
+  } catch (error) {
+    logger.error(`Get user contracts error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get contracts',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get contract details
+ */
+const getContractDetails = async (req, res) => {
+  try {
+    const { contractId } = req.params;
+
+    const contract = await SmartContract.findById(contractId)
+      .populate('owner', 'username email')
+      .populate('deploymentWallet', 'address name');
+
+    if (!contract) {
+      return res.status(404).json({
+        error: 'Contract not found'
+      });
+    }
+
+    // Check if user is owner or contract is public
+    if (contract.owner._id.toString() !== req.user._id.toString() && !contract.isPublic) {
+      return res.status(403).json({
+        error: 'Unauthorized',
+        message: 'You do not have permission to view this contract'
+      });
+    }
+
+    res.json({
+      success: true,
+      contract: {
+        id: contract._id,
+        address: contract.address,
+        name: contract.name,
+        description: contract.description,
+        owner: {
+          id: contract.owner._id,
+          username: contract.owner.username
+        },
+        deployerAddress: contract.deployerAddress,
+        deploymentTxHash: contract.deploymentTxHash,
+        deploymentBlockNumber: contract.deploymentBlockNumber,
+        deployedAt: contract.deployedAt,
+        verified: contract.verified,
+        verificationDate: contract.verificationDate,
+        verificationCompiler: contract.verificationCompiler,
+        abi: contract.abi,
+        bytecode: contract.bytecode,
+        sourceCode: contract.sourceCode,
+        balance: contract.balance,
+        state: contract.state,
+        interactionCount: contract.interactionCount,
+        lastInteraction: contract.lastInteraction,
+        tags: contract.tags,
+        isPublic: contract.isPublic,
+        network: contract.network,
+        gasUsed: contract.gasUsed,
+        gasPrice: contract.gasPrice,
+        deploymentFee: contract.transactionFee,
+        metadata: contract.metadata
+      }
+    });
+  } catch (error) {
+    logger.error(`Get contract details error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get contract details',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Update contract metadata
+ */
+const updateContractMetadata = async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { description, tags, isPublic } = req.body;
+
+    const contract = await SmartContract.findOne({
+      _id: contractId,
+      owner: req.user._id
+    });
+
+    if (!contract) {
+      return res.status(404).json({
+        error: 'Contract not found'
+      });
+    }
+
+    if (description !== undefined) contract.description = description;
+    if (tags !== undefined) contract.tags = tags;
+    if (isPublic !== undefined) contract.isPublic = isPublic;
+
+    await contract.save();
+
+    logger.info(`Contract ${contract.address} metadata updated by owner ${req.user._id}`);
+
+    res.json({
+      success: true,
+      message: 'Contract metadata updated successfully',
+      contract: {
+        id: contract._id,
+        address: contract.address,
+        name: contract.name,
+        description: contract.description,
+        tags: contract.tags,
+        isPublic: contract.isPublic
+      }
+    });
+  } catch (error) {
+    logger.error(`Update contract metadata error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to update contract',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Search verified contracts
+ */
+const searchContracts = async (req, res) => {
+  try {
+    const { q, tags, network, limit } = req.query;
+
+    if (!q) {
+      return res.status(400).json({
+        error: 'Search query required',
+        message: 'Please provide a search term'
+      });
+    }
+
+    const filters = {};
+    if (tags) filters.tags = Array.isArray(tags) ? tags : [tags];
+    if (network) filters.network = network;
+    if (limit) filters.limit = parseInt(limit);
+
+    const contracts = await SmartContract.searchContracts(q, filters);
+
+    res.json({
+      success: true,
+      contracts: contracts.map(c => ({
+        id: c._id,
+        address: c.address,
+        name: c.name,
+        description: c.description,
+        owner: c.owner,
+        verified: c.verified,
+        interactionCount: c.interactionCount,
+        tags: c.tags,
+        network: c.network
+      })),
+      count: contracts.length
+    });
+  } catch (error) {
+    logger.error(`Search contracts error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to search contracts',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get popular verified contracts
+ */
+const getPopularContracts = async (req, res) => {
+  try {
+    const { network, limit } = req.query;
+
+    const filters = {};
+    if (network) filters.network = network;
+    if (limit) filters.limit = parseInt(limit) || 20;
+
+    const contracts = await SmartContract.findVerifiedContracts(filters);
+
+    res.json({
+      success: true,
+      contracts: contracts.map(c => ({
+        id: c._id,
+        address: c.address,
+        name: c.name,
+        description: c.description,
+        verified: c.verified,
+        interactionCount: c.interactionCount,
+        tags: c.tags,
+        network: c.network,
+        balance: c.balance
+      })),
+      count: contracts.length
+    });
+  } catch (error) {
+    logger.error(`Get popular contracts error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get popular contracts',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Delete contract (owner only, soft delete)
+ */
+const deleteContract = async (req, res) => {
+  try {
+    const { contractId } = req.params;
+
+    const contract = await SmartContract.findOne({
+      _id: contractId,
+      owner: req.user._id
+    });
+
+    if (!contract) {
+      return res.status(404).json({
+        error: 'Contract not found'
+      });
+    }
+
+    await SmartContract.deleteOne({ _id: contractId });
+
+    logger.info(`Contract ${contract.address} deleted by owner ${req.user._id}`);
+
+    res.json({
+      success: true,
+      message: 'Contract deleted successfully'
+    });
+  } catch (error) {
+    logger.error(`Delete contract error: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to delete contract',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   deployContract,
   callContract,
@@ -362,5 +743,12 @@ module.exports = {
   getContractState,
   listContracts,
   estimateContractGas,
-  getGasPrice
+  getGasPrice,
+  verifyContract,
+  getUserContracts,
+  getContractDetails,
+  updateContractMetadata,
+  searchContracts,
+  getPopularContracts,
+  deleteContract
 };

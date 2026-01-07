@@ -96,6 +96,32 @@ const schemas = {
     peerUrl: Joi.string().uri({
       scheme: ['ws', 'wss']
     }).required()
+  }),
+
+  // Create post
+  createPost: Joi.object({
+    content: Joi.string().min(1).max(5000).required(),
+    type: Joi.string().valid('transaction', 'achievement', 'general', 'milestone').default('general'),
+    visibility: Joi.string().valid('public', 'friends', 'private').default('public'),
+    metadata: Joi.object().optional(),
+    relatedTransaction: Joi.string().optional(),
+    relatedAchievement: Joi.string().optional()
+  }),
+
+  // Comment on post
+  commentOnPost: Joi.object({
+    content: Joi.string().min(1).max(1000).required()
+  }),
+
+  // Update profile
+  updateProfile: Joi.object({
+    username: Joi.string().alphanum().min(3).max(30).optional(),
+    email: Joi.string().email().optional()
+  }),
+
+  // Track referral
+  trackReferral: Joi.object({
+    code: Joi.string().required()
   })
 };
 

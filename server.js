@@ -23,6 +23,8 @@ const miningRoutes = require('./routes/mining.routes');
 const mempoolRoutes = require('./routes/mempool.routes');
 const explorerRoutes = require('./routes/explorer.routes');
 const stakingRoutes = require('./routes/staking.routes');
+const socialRoutes = require('./routes/social.routes');
+const nftRoutes = require('./routes/nft.routes');
 
 class ProductionServer {
   constructor() {
@@ -217,6 +219,8 @@ class ProductionServer {
     this.app.use('/api/mempool', mempoolRoutes);
     this.app.use('/api/explorer', explorerRoutes);
     this.app.use('/api/staking', stakingRoutes);
+    this.app.use('/api/social', socialRoutes);
+    this.app.use('/api/nft', nftRoutes);
     this.app.use('/api/price', require('./routes/price.routes'));
     this.app.use('/api/liquidity', require('./routes/liquidity.routes'));
 
