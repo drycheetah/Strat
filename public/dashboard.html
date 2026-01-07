@@ -2786,10 +2786,14 @@
                 }
 
                 if (walletData) {
-                    const powerRes = await fetch(`${API}/governance/voting-power/${walletData.address}`);
-                    const powerData = await powerRes.json();
-                    if (powerData.success) {
-                        document.getElementById('voting-power').textContent = powerData.votingPower.totalVotingPower.toFixed(0);
+                    try {
+                        const powerRes = await fetch(`${API}/governance/voting-power/${walletData.address}`);
+                        const powerData = await powerRes.json();
+                        if (powerData.success && powerData.votingPower && typeof powerData.votingPower.totalVotingPower === 'number') {
+                            document.getElementById('voting-power').textContent = powerData.votingPower.totalVotingPower.toFixed(0);
+                        }
+                    } catch(e) {
+                        console.log('Voting power not available');
                     }
                 }
 
@@ -2823,10 +2827,11 @@
                     `).join('');
                     document.getElementById('proposals-list').innerHTML = html;
                 } else {
-                    document.getElementById('proposals-list').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">No proposals yet</div>';
+                    document.getElementById('proposals-list').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">No governance proposals yet. Create one to get started!</div>';
                 }
             } catch(e) {
                 console.error('Failed to load governance:', e);
+                document.getElementById('proposals-list').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">Error loading governance data</div>';
             }
         }
 
@@ -2907,20 +2912,26 @@
 
                 if (orderbook.success && orderbook.orderbook) {
                     const { buy, sell } = orderbook.orderbook;
+                    const sellHTML = sell && sell.length > 0 ? sell.slice(0, 5).map(o => `<div class="flex justify-between text-red-400"><span>${o.amount}</span><span>$${o.price}</span></div>`).join('') : '<div class="text-gray-400 text-sm">No sell orders</div>';
+                    const buyHTML = buy && buy.length > 0 ? buy.slice(0, 5).map(o => `<div class="flex justify-between text-green-400"><span>${o.amount}</span><span>$${o.price}</span></div>`).join('') : '<div class="text-gray-400 text-sm">No buy orders</div>';
                     const html = `
                         <div class="mb-4">
                             <div class="text-sm text-gray-400 mb-2">Sell Orders</div>
-                            ${sell.slice(0, 5).map(o => `<div class="flex justify-between text-red-400"><span>${o.amount}</span><span>$${o.price}</span></div>`).join('')}
+                            ${sellHTML}
                         </div>
                         <div>
                             <div class="text-sm text-gray-400 mb-2">Buy Orders</div>
-                            ${buy.slice(0, 5).map(o => `<div class="flex justify-between text-green-400"><span>${o.amount}</span><span>$${o.price}</span></div>`).join('')}
+                            ${buyHTML}
                         </div>
                     `;
                     document.getElementById('orderbook').innerHTML = html;
+                } else {
+                    document.getElementById('orderbook').innerHTML = '<div class="text-gray-400 text-sm">No orderbook data available</div>';
                 }
             } catch(e) {
                 console.error('Failed to load trading:', e);
+                document.getElementById('user-orders').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">Error loading orders</div>';
+                document.getElementById('orderbook').innerHTML = '<div class="text-gray-400 text-sm">Error loading orderbook</div>';
             }
         }
 
@@ -3008,6 +3019,7 @@
                 }
             } catch(e) {
                 console.error('Failed to load social feed:', e);
+                document.getElementById('social-feed').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">Error loading social feed</div>';
             }
         }
 
