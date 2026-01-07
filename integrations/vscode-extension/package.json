@@ -1,0 +1,150 @@
+{
+  "name": "strat-vscode",
+  "displayName": "STRAT Blockchain Tools",
+  "description": "Smart contract development and blockchain interaction for STRAT",
+  "version": "1.0.0",
+  "publisher": "strat-team",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Debuggers",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:solidity",
+    "onCommand:strat.compile",
+    "onCommand:strat.deploy",
+    "onView:stratExplorer"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "strat.compile",
+        "title": "STRAT: Compile Smart Contract"
+      },
+      {
+        "command": "strat.deploy",
+        "title": "STRAT: Deploy Contract"
+      },
+      {
+        "command": "strat.test",
+        "title": "STRAT: Run Tests"
+      },
+      {
+        "command": "strat.connectWallet",
+        "title": "STRAT: Connect Wallet"
+      },
+      {
+        "command": "strat.getBalance",
+        "title": "STRAT: Get Balance"
+      },
+      {
+        "command": "strat.sendTransaction",
+        "title": "STRAT: Send Transaction"
+      },
+      {
+        "command": "strat.viewBlock",
+        "title": "STRAT: View Block"
+      },
+      {
+        "command": "strat.newProject",
+        "title": "STRAT: Create New Project"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "strat-explorer",
+          "title": "STRAT",
+          "icon": "resources/strat-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "strat-explorer": [
+        {
+          "id": "stratContracts",
+          "name": "Smart Contracts"
+        },
+        {
+          "id": "stratAccounts",
+          "name": "Accounts"
+        },
+        {
+          "id": "stratNetwork",
+          "name": "Network Info"
+        }
+      ]
+    },
+    "snippets": [
+      {
+        "language": "solidity",
+        "path": "./snippets/strat.json"
+      }
+    ],
+    "configuration": {
+      "title": "STRAT",
+      "properties": {
+        "strat.rpcUrl": {
+          "type": "string",
+          "default": "http://localhost:8545",
+          "description": "STRAT RPC endpoint URL"
+        },
+        "strat.network": {
+          "type": "string",
+          "enum": ["mainnet", "testnet", "local"],
+          "default": "testnet",
+          "description": "STRAT network to connect to"
+        },
+        "strat.explorerUrl": {
+          "type": "string",
+          "default": "https://stratscan.io",
+          "description": "Block explorer URL"
+        },
+        "strat.compilerVersion": {
+          "type": "string",
+          "default": "0.8.19",
+          "description": "Solidity compiler version"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "strat.compile",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c",
+        "when": "editorLangId == solidity"
+      },
+      {
+        "command": "strat.deploy",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
+        "when": "editorLangId == solidity"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
+    "@typescript-eslint/parser": "^5.59.0",
+    "eslint": "^8.41.0",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "ethers": "^6.0.0",
+    "axios": "^1.4.0"
+  }
+}
