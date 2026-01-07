@@ -654,10 +654,152 @@
             </div>
         </div>
 
-        <!-- Placeholder for other sections - will be added in subsequent commits -->
+        <!-- DAO Governance Section -->
+        <div id="governance" class="section">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-3xl font-bold">DAO Governance</h2>
+                <button onclick="openCreateProposal()" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i> Create Proposal
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Total Proposals</div>
+                    <div class="text-2xl font-bold" id="totalProposals">0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Active Votes</div>
+                    <div class="text-2xl font-bold text-green-400" id="activeVotes">0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Your Voting Power</div>
+                    <div class="text-2xl font-bold text-purple-400" id="votingPower">0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Delegated To You</div>
+                    <div class="text-2xl font-bold text-blue-400" id="delegatedPower">0</div>
+                </div>
+            </div>
+
+            <!-- Delegation -->
+            <div class="card mb-6">
+                <h3 class="text-xl font-bold mb-4">Voting Power Delegation</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Delegate To Address</label>
+                        <input type="text" id="delegateAddress" placeholder="0x..." class="mb-4">
+                        <button onclick="delegateVotingPower()" class="btn btn-primary w-full">
+                            Delegate Voting Power
+                        </button>
+                    </div>
+                    <div class="bg-gray-800 bg-opacity-30 rounded-lg p-4">
+                        <h4 class="font-semibold mb-2">Delegation Info</h4>
+                        <div class="text-sm text-gray-400">
+                            <p class="mb-2">• Delegation is reversible at any time</p>
+                            <p class="mb-2">• You can still vote on proposals</p>
+                            <p>• Delegate increases their voting power</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Proposals List -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold">Active Proposals</h3>
+                    <div class="flex gap-2">
+                        <button class="btn-secondary px-4 py-2 rounded-lg" onclick="filterProposals('all')">All</button>
+                        <button class="btn-secondary px-4 py-2 rounded-lg" onclick="filterProposals('active')">Active</button>
+                        <button class="btn-secondary px-4 py-2 rounded-lg" onclick="filterProposals('passed')">Passed</button>
+                        <button class="btn-secondary px-4 py-2 rounded-lg" onclick="filterProposals('rejected')">Rejected</button>
+                    </div>
+                </div>
+
+                <div id="proposalsList" class="space-y-4">
+                    <!-- Proposals will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Wallet Section -->
         <div id="wallet" class="section">
             <h2 class="text-3xl font-bold mb-6">My Wallet</h2>
             <p class="text-gray-400">Wallet section coming soon...</p>
+        </div>
+    </div>
+
+    <!-- Create Proposal Modal -->
+    <div id="createProposalModal" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">Create Proposal</h2>
+                <button onclick="closeCreateProposal()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form onsubmit="submitProposal(event)">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Proposal Title</label>
+                    <input type="text" id="proposalTitle" required class="mb-4" placeholder="Enter proposal title">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Description</label>
+                    <textarea id="proposalDescription" rows="6" required placeholder="Describe your proposal in detail"></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Category</label>
+                    <select id="proposalCategory" class="mb-4">
+                        <option value="protocol">Protocol Upgrade</option>
+                        <option value="treasury">Treasury Allocation</option>
+                        <option value="parameter">Parameter Change</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm text-gray-400 mb-2">Voting Duration (days)</label>
+                    <input type="number" id="votingDuration" value="7" min="1" max="30" required>
+                </div>
+
+                <div class="flex gap-4">
+                    <button type="submit" class="btn btn-primary flex-1">Create Proposal</button>
+                    <button type="button" onclick="closeCreateProposal()" class="btn btn-secondary flex-1">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Vote Modal -->
+    <div id="voteModal" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">Cast Your Vote</h2>
+                <button onclick="closeVoteModal()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div id="voteProposalInfo" class="mb-6"></div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="castVote(true)" class="btn btn-primary p-6">
+                    <i class="fas fa-check text-2xl mb-2"></i>
+                    <div class="font-bold">Vote For</div>
+                </button>
+                <button onclick="castVote(false)" class="btn-secondary p-6 border-2 border-red-500">
+                    <i class="fas fa-times text-2xl mb-2"></i>
+                    <div class="font-bold">Vote Against</div>
+                </button>
+            </div>
+
+            <div class="text-sm text-gray-400 text-center">
+                Your voting power: <span id="modalVotingPower" class="text-white font-bold">0</span> votes
+            </div>
         </div>
     </div>
 
@@ -1014,6 +1156,302 @@
         function logout() {
             localStorage.removeItem('token');
             window.location.href = '/';
+        }
+
+        // DAO Governance Functions
+        let currentProposalId = null;
+        let proposals = [];
+
+        async function loadGovernanceData() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/governance/proposals', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    proposals = data.proposals || [];
+                    updateGovernanceStats(data.stats);
+                    renderProposals();
+                }
+            } catch (error) {
+                console.error('Error loading governance data:', error);
+                // Load sample data for demo
+                loadSampleProposals();
+            }
+        }
+
+        function loadSampleProposals() {
+            proposals = [
+                {
+                    id: 1,
+                    title: 'Increase Mining Rewards by 10%',
+                    description: 'Proposal to increase block rewards to incentivize more miners',
+                    category: 'parameter',
+                    votesFor: 12500,
+                    votesAgainst: 3200,
+                    status: 'active',
+                    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+                    proposer: '0x1234...5678'
+                },
+                {
+                    id: 2,
+                    title: 'Allocate Treasury for Marketing',
+                    description: 'Allocate 100,000 STRAT for Q1 marketing campaign',
+                    category: 'treasury',
+                    votesFor: 8900,
+                    votesAgainst: 6100,
+                    status: 'active',
+                    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+                    proposer: '0xabcd...efgh'
+                },
+                {
+                    id: 3,
+                    title: 'Protocol Upgrade to v2.0',
+                    description: 'Major protocol upgrade with improved smart contract functionality',
+                    category: 'protocol',
+                    votesFor: 25000,
+                    votesAgainst: 2000,
+                    status: 'passed',
+                    endTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+                    proposer: '0x9999...0000'
+                }
+            ];
+            renderProposals();
+            updateGovernanceStats({
+                totalProposals: 3,
+                activeVotes: 2,
+                votingPower: 1500,
+                delegatedPower: 350
+            });
+        }
+
+        function updateGovernanceStats(stats) {
+            document.getElementById('totalProposals').textContent = stats.totalProposals || proposals.length;
+            document.getElementById('activeVotes').textContent = stats.activeVotes || proposals.filter(p => p.status === 'active').length;
+            document.getElementById('votingPower').textContent = (stats.votingPower || 0).toLocaleString();
+            document.getElementById('delegatedPower').textContent = (stats.delegatedPower || 0).toLocaleString();
+        }
+
+        function renderProposals(filter = 'all') {
+            const container = document.getElementById('proposalsList');
+            let filteredProposals = proposals;
+
+            if (filter !== 'all') {
+                filteredProposals = proposals.filter(p => p.status === filter);
+            }
+
+            if (filteredProposals.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-8">No proposals found</div>';
+                return;
+            }
+
+            container.innerHTML = filteredProposals.map(proposal => {
+                const totalVotes = proposal.votesFor + proposal.votesAgainst;
+                const forPercentage = totalVotes > 0 ? (proposal.votesFor / totalVotes * 100).toFixed(1) : 0;
+                const againstPercentage = totalVotes > 0 ? (proposal.votesAgainst / totalVotes * 100).toFixed(1) : 0;
+                const timeLeft = getTimeLeft(proposal.endTime);
+
+                let statusBadge = '';
+                if (proposal.status === 'active') {
+                    statusBadge = '<span class="px-3 py-1 bg-green-500 bg-opacity-20 text-green-400 rounded-full text-sm">Active</span>';
+                } else if (proposal.status === 'passed') {
+                    statusBadge = '<span class="px-3 py-1 bg-blue-500 bg-opacity-20 text-blue-400 rounded-full text-sm">Passed</span>';
+                } else if (proposal.status === 'rejected') {
+                    statusBadge = '<span class="px-3 py-1 bg-red-500 bg-opacity-20 text-red-400 rounded-full text-sm">Rejected</span>';
+                }
+
+                return `
+                    <div class="card">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <h4 class="text-xl font-bold">${proposal.title}</h4>
+                                    ${statusBadge}
+                                </div>
+                                <p class="text-gray-400 mb-2">${proposal.description}</p>
+                                <div class="flex items-center gap-4 text-sm text-gray-500">
+                                    <span><i class="fas fa-user mr-1"></i> ${proposal.proposer}</span>
+                                    <span><i class="fas fa-clock mr-1"></i> ${timeLeft}</span>
+                                    <span class="px-2 py-1 bg-gray-700 rounded">${proposal.category}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2 text-sm">
+                                <span class="text-green-400">For: ${forPercentage}%</span>
+                                <span class="text-red-400">Against: ${againstPercentage}%</span>
+                            </div>
+                            <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden flex">
+                                <div class="bg-green-500" style="width: ${forPercentage}%"></div>
+                                <div class="bg-red-500" style="width: ${againstPercentage}%"></div>
+                            </div>
+                            <div class="flex items-center justify-between mt-2 text-sm text-gray-400">
+                                <span>${proposal.votesFor.toLocaleString()} votes</span>
+                                <span>${proposal.votesAgainst.toLocaleString()} votes</span>
+                            </div>
+                        </div>
+
+                        ${proposal.status === 'active' ? `
+                            <button onclick="openVoteModal(${proposal.id})" class="btn btn-primary w-full">
+                                <i class="fas fa-vote-yea mr-2"></i> Vote Now
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getTimeLeft(endTime) {
+            const now = new Date();
+            const end = new Date(endTime);
+            const diff = end - now;
+
+            if (diff < 0) return 'Ended';
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+            if (days > 0) return `${days} days left`;
+            if (hours > 0) return `${hours} hours left`;
+            return 'Ending soon';
+        }
+
+        function filterProposals(filter) {
+            renderProposals(filter);
+        }
+
+        function openCreateProposal() {
+            document.getElementById('createProposalModal').classList.add('active');
+        }
+
+        function closeCreateProposal() {
+            document.getElementById('createProposalModal').classList.remove('active');
+        }
+
+        async function submitProposal(event) {
+            event.preventDefault();
+
+            const proposal = {
+                title: document.getElementById('proposalTitle').value,
+                description: document.getElementById('proposalDescription').value,
+                category: document.getElementById('proposalCategory').value,
+                duration: document.getElementById('votingDuration').value
+            };
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/governance/proposals', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(proposal)
+                });
+
+                if (response.ok) {
+                    showToast('Proposal created successfully!', 'success');
+                    closeCreateProposal();
+                    loadGovernanceData();
+                } else {
+                    throw new Error('Failed to create proposal');
+                }
+            } catch (error) {
+                console.error('Error creating proposal:', error);
+                showToast('Error creating proposal. Please try again.', 'error');
+            }
+        }
+
+        function openVoteModal(proposalId) {
+            currentProposalId = proposalId;
+            const proposal = proposals.find(p => p.id === proposalId);
+
+            if (!proposal) return;
+
+            document.getElementById('voteProposalInfo').innerHTML = `
+                <h3 class="font-bold text-lg mb-2">${proposal.title}</h3>
+                <p class="text-gray-400">${proposal.description}</p>
+            `;
+
+            const votingPower = document.getElementById('votingPower').textContent;
+            document.getElementById('modalVotingPower').textContent = votingPower;
+
+            document.getElementById('voteModal').classList.add('active');
+        }
+
+        function closeVoteModal() {
+            document.getElementById('voteModal').classList.remove('active');
+            currentProposalId = null;
+        }
+
+        async function castVote(support) {
+            if (!currentProposalId) return;
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/governance/vote', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        proposalId: currentProposalId,
+                        support: support
+                    })
+                });
+
+                if (response.ok) {
+                    showToast(`Vote cast ${support ? 'for' : 'against'} the proposal!`, 'success');
+                    closeVoteModal();
+                    loadGovernanceData();
+                } else {
+                    throw new Error('Failed to cast vote');
+                }
+            } catch (error) {
+                console.error('Error casting vote:', error);
+                showToast('Error casting vote. Please try again.', 'error');
+            }
+        }
+
+        async function delegateVotingPower() {
+            const address = document.getElementById('delegateAddress').value;
+
+            if (!address || !address.startsWith('0x')) {
+                showToast('Please enter a valid address', 'error');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/governance/delegate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ delegateTo: address })
+                });
+
+                if (response.ok) {
+                    showToast('Voting power delegated successfully!', 'success');
+                    document.getElementById('delegateAddress').value = '';
+                    loadGovernanceData();
+                } else {
+                    throw new Error('Failed to delegate');
+                }
+            } catch (error) {
+                console.error('Error delegating:', error);
+                showToast('Error delegating voting power. Please try again.', 'error');
+            }
+        }
+
+        // Load governance data when section is shown
+        if (currentSection === 'governance') {
+            loadGovernanceData();
         }
     </script>
 </body>
