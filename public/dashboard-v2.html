@@ -1116,6 +1116,246 @@
             </div>
         </div>
 
+        <!-- Mining Section -->
+        <div id="mining" class="section">
+            <h2 class="text-3xl font-bold mb-6">Mining</h2>
+
+            <!-- Mining Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Hash Rate</div>
+                    <div class="text-2xl font-bold" id="hashRate">0 H/s</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Mined Today</div>
+                    <div class="text-2xl font-bold text-green-400" id="minedToday">0 STRAT</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Mining Status</div>
+                    <div class="text-2xl font-bold text-blue-400" id="miningStatus">Stopped</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Est. Daily Earnings</div>
+                    <div class="text-2xl font-bold text-purple-400" id="dailyEarnings">0 STRAT</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Mining Control</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Mining Threads</label>
+                            <input type="range" id="miningThreads" min="1" max="8" value="4" class="w-full">
+                            <div class="text-right text-sm text-gray-400">4 threads</div>
+                        </div>
+                        <button onclick="toggleMining()" id="miningBtn" class="btn btn-primary w-full">
+                            <i class="fas fa-play mr-2"></i> Start Mining
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Mining History</h3>
+                    <canvas id="miningChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Staking Section -->
+        <div id="staking" class="section">
+            <h2 class="text-3xl font-bold mb-6">Staking</h2>
+
+            <!-- Staking Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Total Staked</div>
+                    <div class="text-2xl font-bold" id="totalStakedAmount">0 STRAT</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Staking APY</div>
+                    <div class="text-2xl font-bold text-green-400" id="stakingAPY">5.2%</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Rewards Earned</div>
+                    <div class="text-2xl font-bold text-blue-400" id="stakingRewards">0 STRAT</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Lock Period</div>
+                    <div class="text-2xl font-bold text-purple-400" id="lockPeriod">0 days</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Stake Tokens</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Amount to Stake</label>
+                            <input type="number" id="stakeAmount" placeholder="0.00 STRAT">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Lock Period</label>
+                            <select id="stakeLockPeriod">
+                                <option value="30">30 Days (5% APY)</option>
+                                <option value="90">90 Days (7% APY)</option>
+                                <option value="180">180 Days (10% APY)</option>
+                                <option value="365">365 Days (15% APY)</option>
+                            </select>
+                        </div>
+                        <button onclick="stakeTokens()" class="btn btn-primary w-full">Stake Now</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Your Stakes</h3>
+                    <div id="stakesList" class="space-y-3 max-h-80 overflow-y-auto">
+                        <!-- Stakes will be listed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Analytics Section -->
+        <div id="portfolio" class="section">
+            <h2 class="text-3xl font-bold mb-6">Portfolio Analytics</h2>
+
+            <!-- Portfolio Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Portfolio Value</div>
+                    <div class="text-2xl font-bold" id="portfolioTotalValue">$0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">24h Change</div>
+                    <div class="text-2xl font-bold text-green-400" id="portfolio24h">+0%</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">All Time High</div>
+                    <div class="text-2xl font-bold text-blue-400" id="portfolioATH">$0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Total Profit</div>
+                    <div class="text-2xl font-bold text-purple-400" id="portfolioProfit">+$0</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Portfolio Distribution</h3>
+                    <canvas id="portfolioPieChart" height="250"></canvas>
+                </div>
+
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Performance Over Time</h3>
+                    <canvas id="portfolioLineChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="text-xl font-bold mb-4">Asset Breakdown</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4">Asset</th>
+                                <th class="text-right py-3 px-4">Balance</th>
+                                <th class="text-right py-3 px-4">Value</th>
+                                <th class="text-right py-3 px-4">24h Change</th>
+                                <th class="text-right py-3 px-4">Allocation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assetBreakdown">
+                            <!-- Assets will be listed here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction History Section -->
+        <div id="history" class="section">
+            <h2 class="text-3xl font-bold mb-6">Transaction History</h2>
+
+            <!-- Filters -->
+            <div class="card mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <select id="txTypeFilter" onchange="filterTransactions()">
+                        <option value="all">All Types</option>
+                        <option value="send">Send</option>
+                        <option value="receive">Receive</option>
+                        <option value="stake">Stake</option>
+                        <option value="mining">Mining</option>
+                        <option value="trade">Trade</option>
+                    </select>
+                    <select id="txStatusFilter" onchange="filterTransactions()">
+                        <option value="all">All Status</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                    <input type="date" id="txDateFrom" onchange="filterTransactions()">
+                    <input type="date" id="txDateTo" onchange="filterTransactions()">
+                </div>
+            </div>
+
+            <!-- Transaction List -->
+            <div class="card">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4">Type</th>
+                                <th class="text-left py-3 px-4">From/To</th>
+                                <th class="text-right py-3 px-4">Amount</th>
+                                <th class="text-right py-3 px-4">Status</th>
+                                <th class="text-right py-3 px-4">Date</th>
+                                <th class="text-right py-3 px-4">TX Hash</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionList">
+                            <!-- Transactions will be listed here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div id="analytics" class="section">
+            <h2 class="text-3xl font-bold mb-6">Advanced Analytics</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="card">
+                    <h3 class="text-lg font-bold mb-2">Network Activity</h3>
+                    <div class="text-3xl font-bold mb-2">12,450</div>
+                    <div class="text-sm text-green-400">+15% this week</div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-bold mb-2">Active Addresses</h3>
+                    <div class="text-3xl font-bold mb-2">8,234</div>
+                    <div class="text-sm text-green-400">+8% this week</div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-bold mb-2">Avg Block Time</h3>
+                    <div class="text-3xl font-bold mb-2">2.3s</div>
+                    <div class="text-sm text-gray-400">Consistent</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Transaction Volume</h3>
+                    <canvas id="txVolumeChart" height="250"></canvas>
+                </div>
+
+                <div class="card">
+                    <h3 class="text-xl font-bold mb-4">Network Hashrate</h3>
+                    <canvas id="hashrateChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Wallet Section -->
         <div id="wallet" class="section">
             <h2 class="text-3xl font-bold mb-6">My Wallet</h2>
