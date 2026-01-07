@@ -1,0 +1,26 @@
+{
+  "name": "strat-nft-gallery",
+  "version": "1.0.0",
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios"
+  },
+  "dependencies": {
+    "expo": "~50.0.0",
+    "expo-image-picker": "~14.7.0",
+    "expo-camera": "~14.0.0",
+    "react": "18.2.0",
+    "react-native": "0.73.0",
+    "react-native-gesture-handler": "~2.14.0",
+    "react-native-reanimated": "~3.6.0",
+    "@react-navigation/native": "^6.1.9",
+    "@react-navigation/stack": "^6.3.20",
+    "axios": "^1.6.0",
+    "react-native-fast-image": "^8.6.3",
+    "react-native-vector-icons": "^10.0.3",
+    "@react-native-async-storage/async-storage": "1.21.0",
+    "zustand": "^4.4.7"
+  }
+}
