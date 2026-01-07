@@ -1,0 +1,25 @@
+{
+  "name": "strat-dao-voting",
+  "version": "1.0.0",
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios"
+  },
+  "dependencies": {
+    "expo": "~50.0.0",
+    "react": "18.2.0",
+    "react-native": "0.73.0",
+    "react-native-gesture-handler": "~2.14.0",
+    "react-native-reanimated": "~3.6.0",
+    "@react-navigation/native": "^6.1.9",
+    "@react-navigation/stack": "^6.3.20",
+    "axios": "^1.6.0",
+    "react-native-chart-kit": "^6.12.0",
+    "react-native-svg": "14.1.0",
+    "react-native-vector-icons": "^10.0.3",
+    "socket.io-client": "^4.6.0",
+    "zustand": "^4.4.7"
+  }
+}
