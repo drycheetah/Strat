@@ -1808,6 +1808,14 @@
             if (name === 'liquidity') {
                 loadPoolInfo();
                 loadUserPosition();
+            } else if (name === 'nft') {
+                showNFTTab('marketplace');
+            } else if (name === 'governance') {
+                loadGovernance();
+            } else if (name === 'trading') {
+                loadTrading();
+            } else if (name === 'social') {
+                loadSocialFeed();
             }
         };
 
@@ -2632,6 +2640,416 @@
         }
 
         setInterval(loadDashboard, 10000);
+
+        // ============= NEW FEATURES FUNCTIONS =============
+
+        // NFT Functions
+        function showNFTTab(tab) {
+            // Hide all tabs
+            document.querySelectorAll('.nft-tab').forEach(t => t.style.display = 'none');
+
+            // Update button styles
+            document.getElementById('nft-marketplace-tab').className = tab === 'marketplace' ? 'btn-primary px-6 py-2 rounded-lg' : 'btn-secondary px-6 py-2 rounded-lg';
+            document.getElementById('nft-mint-tab').className = tab === 'mint' ? 'btn-primary px-6 py-2 rounded-lg' : 'btn-secondary px-6 py-2 rounded-lg';
+            document.getElementById('nft-collection-tab').className = tab === 'collection' ? 'btn-primary px-6 py-2 rounded-lg' : 'btn-secondary px-6 py-2 rounded-lg';
+
+            // Show selected tab
+            document.getElementById('nft-' + tab).style.display = 'block';
+
+            // Load data
+            if (tab === 'marketplace') loadNFTMarketplace();
+            if (tab === 'collection') loadMyNFTs();
+        }
+
+        async function loadNFTMarketplace() {
+            try {
+                const res = await fetch(`${API}/nft/marketplace?page=1&limit=12`);
+                const data = await res.json();
+
+                if (data.success && data.nfts && data.nfts.length > 0) {
+                    const html = data.nfts.map(nft => `
+                        <div class="glass p-4 rounded-xl">
+                            <div class="bg-gray-800 h-48 rounded-lg mb-4 flex items-center justify-center">
+                                <i class="fas fa-image text-4xl text-gray-600"></i>
+                            </div>
+                            <h4 class="font-bold mb-2">${nft.name || 'Unnamed NFT'}</h4>
+                            <p class="text-sm text-gray-400 mb-3">${(nft.description || '').substring(0, 60)}...</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-green-400 font-bold">${nft.price || 0} STRAT</span>
+                                <button onclick="buyNFT('${nft._id}')" class="btn-primary px-4 py-2 rounded-lg text-sm">Buy</button>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('nft-grid').innerHTML = html;
+                } else {
+                    document.getElementById('nft-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">No NFTs listed yet</div>';
+                }
+            } catch(e) {
+                console.error('Failed to load NFT marketplace:', e);
+            }
+        }
+
+        async function loadMyNFTs() {
+            if (!walletData) return;
+            try {
+                const res = await fetch(`${API}/nft/collection/${walletData.address}`);
+                const data = await res.json();
+
+                if (data.success && data.nfts && data.nfts.length > 0) {
+                    const html = data.nfts.map(nft => `
+                        <div class="glass p-4 rounded-xl">
+                            <div class="bg-gray-800 h-48 rounded-lg mb-4 flex items-center justify-center">
+                                <i class="fas fa-image text-4xl text-gray-600"></i>
+                            </div>
+                            <h4 class="font-bold mb-2">${nft.name}</h4>
+                            <p class="text-sm text-gray-400 mb-3">${nft.tokenId}</p>
+                            <button onclick="listNFTForSale('${nft._id}')" class="btn-primary w-full py-2 rounded-lg text-sm">List for Sale</button>
+                        </div>
+                    `).join('');
+                    document.getElementById('nft-collection-grid').innerHTML = html;
+                } else {
+                    document.getElementById('nft-collection-grid').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400 col-span-3">You don\'t own any NFTs yet</div>';
+                }
+            } catch(e) {
+                console.error('Failed to load NFT collection:', e);
+            }
+        }
+
+        async function mintNFT() {
+            const name = document.getElementById('nft-name').value;
+            const description = document.getElementById('nft-description').value;
+            const image = document.getElementById('nft-image').value;
+            const royalty = document.getElementById('nft-royalty').value || 0;
+
+            if (!name || !image) {
+                return showNotification('Please fill in NFT name and image', 'error');
+            }
+
+            try {
+                const res = await fetch(`${API}/nft/mint`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ name, description, image, royaltyPercent: parseFloat(royalty) })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('NFT minted successfully!', 'success');
+                    document.getElementById('nft-name').value = '';
+                    document.getElementById('nft-description').value = '';
+                    document.getElementById('nft-image').value = '';
+                    document.getElementById('nft-royalty').value = '';
+                    showNFTTab('collection');
+                } else {
+                    showNotification(data.error || 'Failed to mint NFT', 'error');
+                }
+            } catch(e) {
+                showNotification('Error minting NFT', 'error');
+            }
+        }
+
+        async function buyNFT(tokenId) {
+            try {
+                const res = await fetch(`${API}/nft/${tokenId}/buy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('NFT purchased successfully!', 'success');
+                    loadNFTMarketplace();
+                } else {
+                    showNotification(data.error || 'Failed to buy NFT', 'error');
+                }
+            } catch(e) {
+                showNotification('Error buying NFT', 'error');
+            }
+        }
+
+        // Governance Functions
+        async function loadGovernance() {
+            try {
+                const [proposalsRes, statsRes] = await Promise.all([
+                    fetch(`${API}/governance/proposals`),
+                    fetch(`${API}/governance/stats`)
+                ]);
+
+                const proposals = await proposalsRes.json();
+                const stats = await statsRes.json();
+
+                if (stats.success) {
+                    document.getElementById('total-proposals').textContent = stats.stats.totalProposals || 0;
+                    document.getElementById('active-proposals').textContent = stats.stats.activeProposals || 0;
+                    document.getElementById('participation-rate').textContent = (stats.stats.participationRate || 0).toFixed(1) + '%';
+                }
+
+                if (walletData) {
+                    const powerRes = await fetch(`${API}/governance/voting-power/${walletData.address}`);
+                    const powerData = await powerRes.json();
+                    if (powerData.success) {
+                        document.getElementById('voting-power').textContent = powerData.votingPower.totalVotingPower.toFixed(0);
+                    }
+                }
+
+                if (proposals.success && proposals.proposals && proposals.proposals.length > 0) {
+                    const html = proposals.proposals.map(p => `
+                        <div class="glass p-6 rounded-xl">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 class="text-xl font-bold mb-2">${p.title}</h4>
+                                    <p class="text-gray-400">${p.description.substring(0, 150)}...</p>
+                                </div>
+                                <span class="px-3 py-1 rounded-full text-sm ${p.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}">${p.status}</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <div class="text-sm text-gray-400">For</div>
+                                    <div class="text-2xl font-bold text-green-400">${p.votesFor || 0}</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-400">Against</div>
+                                    <div class="text-2xl font-bold text-red-400">${p.votesAgainst || 0}</div>
+                                </div>
+                            </div>
+                            ${p.status === 'active' ? `
+                                <div class="flex gap-2">
+                                    <button onclick="voteOnProposal('${p._id}', true)" class="btn-primary flex-1 py-2 rounded-lg">Vote For</button>
+                                    <button onclick="voteOnProposal('${p._id}', false)" class="btn-secondary flex-1 py-2 rounded-lg">Vote Against</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('');
+                    document.getElementById('proposals-list').innerHTML = html;
+                } else {
+                    document.getElementById('proposals-list').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">No proposals yet</div>';
+                }
+            } catch(e) {
+                console.error('Failed to load governance:', e);
+            }
+        }
+
+        async function voteOnProposal(proposalId, support) {
+            try {
+                const res = await fetch(`${API}/governance/proposals/${proposalId}/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ support })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('Vote cast successfully!', 'success');
+                    loadGovernance();
+                } else {
+                    showNotification(data.error || 'Failed to vote', 'error');
+                }
+            } catch(e) {
+                showNotification('Error casting vote', 'error');
+            }
+        }
+
+        function showCreateProposal() {
+            const title = prompt('Proposal Title:');
+            if (!title) return;
+            const description = prompt('Proposal Description:');
+            if (!description) return;
+
+            createProposal(title, description);
+        }
+
+        async function createProposal(title, description) {
+            try {
+                const res = await fetch(`${API}/governance/proposals`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ title, description, votingPeriod: 604800000 })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('Proposal created successfully!', 'success');
+                    loadGovernance();
+                } else {
+                    showNotification(data.error || 'Failed to create proposal', 'error');
+                }
+            } catch(e) {
+                showNotification('Error creating proposal', 'error');
+            }
+        }
+
+        // Trading Functions
+        async function loadTrading() {
+            try {
+                const [ordersRes, orderbookRes] = await Promise.all([
+                    fetch(`${API}/trading/orders`, { headers: { 'Authorization': `Bearer ${token}` }}),
+                    fetch(`${API}/trading/orderbook?pair=STRAT/USD`)
+                ]);
+
+                const orders = await ordersRes.json();
+                const orderbook = await orderbookRes.json();
+
+                if (orders.success && orders.orders && orders.orders.length > 0) {
+                    const html = orders.orders.map(o => `
+                        <div class="glass p-4 rounded-xl flex justify-between items-center">
+                            <div>
+                                <div class="font-bold">${o.pair} ${o.side.toUpperCase()}</div>
+                                <div class="text-sm text-gray-400">${o.type} - ${o.amount} @ $${o.price}</div>
+                            </div>
+                            <button onclick="cancelOrder('${o._id}')" class="btn-secondary px-4 py-2 rounded-lg">Cancel</button>
+                        </div>
+                    `).join('');
+                    document.getElementById('user-orders').innerHTML = html;
+                } else {
+                    document.getElementById('user-orders').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">No active orders</div>';
+                }
+
+                if (orderbook.success && orderbook.orderbook) {
+                    const { buy, sell } = orderbook.orderbook;
+                    const html = `
+                        <div class="mb-4">
+                            <div class="text-sm text-gray-400 mb-2">Sell Orders</div>
+                            ${sell.slice(0, 5).map(o => `<div class="flex justify-between text-red-400"><span>${o.amount}</span><span>$${o.price}</span></div>`).join('')}
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400 mb-2">Buy Orders</div>
+                            ${buy.slice(0, 5).map(o => `<div class="flex justify-between text-green-400"><span>${o.amount}</span><span>$${o.price}</span></div>`).join('')}
+                        </div>
+                    `;
+                    document.getElementById('orderbook').innerHTML = html;
+                }
+            } catch(e) {
+                console.error('Failed to load trading:', e);
+            }
+        }
+
+        async function placeOrder() {
+            const pair = document.getElementById('order-pair').value;
+            const side = document.getElementById('order-side').value;
+            const type = document.getElementById('order-type').value;
+            const amount = parseFloat(document.getElementById('order-amount').value);
+            const price = parseFloat(document.getElementById('order-price').value);
+
+            if (!amount || (type !== 'market' && !price)) {
+                return showNotification('Please fill in all fields', 'error');
+            }
+
+            try {
+                const res = await fetch(`${API}/trading/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ pair, side, type, amount, price })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('Order placed successfully!', 'success');
+                    document.getElementById('order-amount').value = '';
+                    document.getElementById('order-price').value = '';
+                    loadTrading();
+                } else {
+                    showNotification(data.error || 'Failed to place order', 'error');
+                }
+            } catch(e) {
+                showNotification('Error placing order', 'error');
+            }
+        }
+
+        async function cancelOrder(orderId) {
+            try {
+                const res = await fetch(`${API}/trading/orders/${orderId}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('Order cancelled', 'success');
+                    loadTrading();
+                } else {
+                    showNotification(data.error || 'Failed to cancel order', 'error');
+                }
+            } catch(e) {
+                showNotification('Error cancelling order', 'error');
+            }
+        }
+
+        // Social Functions
+        async function loadSocialFeed() {
+            try {
+                const res = await fetch(`${API}/social/feed?page=1&limit=20`);
+                const data = await res.json();
+
+                if (data.success && data.posts && data.posts.length > 0) {
+                    const html = data.posts.map(post => `
+                        <div class="glass p-6 rounded-xl">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold">${post.author.substring(0, 10)}...</div>
+                                    <div class="text-xs text-gray-400">${new Date(post.createdAt).toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <p class="mb-4">${post.content}</p>
+                            <div class="flex gap-4 text-gray-400">
+                                <button onclick="likePost('${post._id}')" class="hover:text-green-400">
+                                    <i class="fas fa-heart mr-1"></i> ${post.likes || 0}
+                                </button>
+                                <span><i class="fas fa-comment mr-1"></i> ${post.comments?.length || 0}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('social-feed').innerHTML = html;
+                } else {
+                    document.getElementById('social-feed').innerHTML = '<div class="glass p-4 rounded-xl text-center text-gray-400">No posts yet. Be the first to post!</div>';
+                }
+            } catch(e) {
+                console.error('Failed to load social feed:', e);
+            }
+        }
+
+        async function createPost() {
+            const content = document.getElementById('post-content').value;
+            if (!content) return showNotification('Please write something', 'error');
+
+            try {
+                const res = await fetch(`${API}/social/posts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ content })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('Posted successfully!', 'success');
+                    document.getElementById('post-content').value = '';
+                    loadSocialFeed();
+                } else {
+                    showNotification(data.error || 'Failed to post', 'error');
+                }
+            } catch(e) {
+                showNotification('Error creating post', 'error');
+            }
+        }
+
+        async function likePost(postId) {
+            try {
+                const res = await fetch(`${API}/social/posts/${postId}/like`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    loadSocialFeed();
+                }
+            } catch(e) {
+                console.error('Error liking post:', e);
+            }
+        }
+
     </script>
 </body>
 </html>
