@@ -27,6 +27,17 @@ const socialRoutes = require('./routes/social.routes');
 const nftRoutes = require('./routes/nft.routes');
 const governanceRoutes = require('./routes/governance.routes');
 const tradingRoutes = require('./routes/trading.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
+
+// Import analytics services
+const TransactionAnalyticsService = require('./services/transactionAnalytics');
+const UserAnalyticsService = require('./services/userAnalytics');
+const ProtocolAnalyticsService = require('./services/protocolAnalytics');
+const RevenueAnalyticsService = require('./services/revenueAnalytics');
+const AlertingService = require('./services/alerting');
+const PerformanceMonitor = require('./services/performanceMonitor');
+const NetworkHealthMonitor = require('./services/networkHealthMonitor');
+const ReportGenerator = require('./services/reportGenerator');
 
 class ProductionServer {
   constructor() {
@@ -43,6 +54,16 @@ class ProductionServer {
     this.p2pPort = process.env.P2P_PORT || 6000;
     this.blockchain = null;
     this.p2pServer = null;
+
+    // Analytics services
+    this.transactionAnalytics = null;
+    this.userAnalytics = null;
+    this.protocolAnalytics = null;
+    this.revenueAnalytics = null;
+    this.alerting = null;
+    this.performanceMonitor = null;
+    this.networkMonitor = null;
+    this.reportGenerator = null;
   }
 
   async initialize() {
@@ -81,6 +102,9 @@ class ProductionServer {
 
       // Initialize P2P network
       this.initializeP2P();
+
+      // Initialize analytics services
+      this.initializeAnalytics();
 
       logger.info('Server initialization complete');
     } catch (error) {
@@ -186,6 +210,16 @@ class ProductionServer {
       next();
     });
 
+    // Make analytics services available to controllers
+    this.app.locals.transactionAnalytics = this.transactionAnalytics;
+    this.app.locals.userAnalytics = this.userAnalytics;
+    this.app.locals.protocolAnalytics = this.protocolAnalytics;
+    this.app.locals.revenueAnalytics = this.revenueAnalytics;
+    this.app.locals.alerting = this.alerting;
+    this.app.locals.performanceMonitor = this.performanceMonitor;
+    this.app.locals.networkMonitor = this.networkMonitor;
+    this.app.locals.reportGenerator = this.reportGenerator;
+
     // Request logging
     this.app.use((req, res, next) => {
       logger.info(`${req.method} ${req.path} - ${req.ip}`);
@@ -227,6 +261,7 @@ class ProductionServer {
     this.app.use('/api/trading', tradingRoutes);
     this.app.use('/api/price', require('./routes/price.routes'));
     this.app.use('/api/liquidity', require('./routes/liquidity.routes'));
+    this.app.use('/api/analytics', analyticsRoutes);
 
     // API documentation
     this.app.get('/api', (req, res) => {
@@ -378,6 +413,33 @@ class ProductionServer {
       logger.info(`Connecting to initial peer: ${initialPeer}`);
       this.p2pServer.connectToPeer(initialPeer);
     }
+  }
+
+  initializeAnalytics() {
+    console.log('🔄 Initializing analytics services...');
+
+    // Initialize analytics services
+    this.transactionAnalytics = new TransactionAnalyticsService(this.blockchain);
+    this.userAnalytics = new UserAnalyticsService(this.blockchain);
+    this.protocolAnalytics = new ProtocolAnalyticsService(this.blockchain);
+    this.revenueAnalytics = new RevenueAnalyticsService();
+    this.alerting = new AlertingService(this.io);
+    this.performanceMonitor = new PerformanceMonitor(this.alerting);
+    this.networkMonitor = new NetworkHealthMonitor(this.blockchain, this.p2pServer, this.alerting);
+    this.reportGenerator = new ReportGenerator();
+
+    // Start analytics services
+    this.transactionAnalytics.startAnalytics();
+    this.userAnalytics.startAnalytics();
+    this.protocolAnalytics.startAnalytics();
+    this.revenueAnalytics.startTracking();
+    this.alerting.startMonitoring();
+    this.performanceMonitor.startMonitoring();
+    this.networkMonitor.startMonitoring();
+    this.reportGenerator.scheduleReports();
+
+    console.log('✅ Analytics services initialized');
+    logger.info('Analytics services initialized and started');
   }
 
   async start() {
