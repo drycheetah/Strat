@@ -2165,9 +2165,9 @@
                     if (filter !== 'all') {
                         txs = txs.filter(tx => {
                             if (filter === 'sent') return tx.from === walletData.address;
-                            if (filter === 'received') return tx.to === walletData.address;
-                            if (filter === 'mining') return tx.from === 'MINING_REWARD';
-                            if (filter === 'staking') return tx.from === 'STAKING_REWARD';
+                            if (filter === 'received') return tx.to === walletData.address && tx.type !== 'mining' && tx.type !== 'staking';
+                            if (filter === 'mining') return tx.type === 'mining' || tx.from === 'MINING_REWARD';
+                            if (filter === 'staking') return tx.type === 'staking' || tx.from === 'STAKING_REWARD';
                             return true;
                         });
                     }
@@ -2175,7 +2175,9 @@
                     // Apply search
                     if (search) {
                         txs = txs.filter(tx =>
-                            tx.hash.includes(search) || tx.from.includes(search) || tx.to.includes(search)
+                            (tx.hash && tx.hash.includes(search)) ||
+                            (tx.from && tx.from.includes(search)) ||
+                            (tx.to && tx.to.includes(search))
                         );
                     }
 
@@ -2189,8 +2191,8 @@
                     } else {
                         const html = paginatedTxs.map(tx => {
                             const isSent = tx.from === walletData.address;
-                            const isMining = tx.from === 'MINING_REWARD';
-                            const isStaking = tx.from === 'STAKING_REWARD';
+                            const isMining = tx.type === 'mining' || tx.from === 'MINING_REWARD';
+                            const isStaking = tx.type === 'staking' || tx.from === 'STAKING_REWARD';
 
                             return `
                                 <div class="bg-white/5 p-4 rounded-xl">
@@ -2202,7 +2204,7 @@
                                             </div>
                                             <div class="font-mono text-xs text-gray-400">Hash: ${(tx.hash || 'N/A').substring(0, 32)}...</div>
                                             <div class="text-xs text-gray-500 mt-1">
-                                                ${isMining || isStaking ? 'Block #' + (tx.blockIndex || 'N/A') : isSent ? 'To: ' + ((tx.to || 'N/A').substring(0, 16)) + '...' : 'From: ' + ((tx.from || 'N/A').substring(0, 16)) + '...'}
+                                                ${isMining || isStaking ? 'From: Blockchain Network' : isSent ? 'To: ' + ((tx.to || 'N/A').substring(0, 16)) + '...' : 'From: ' + ((tx.from || 'Unknown').substring(0, 16)) + '...'}
                                             </div>
                                         </div>
                                         <div class="text-right">
