@@ -89,6 +89,28 @@
                 <div class="nav-item" onclick="showSection('history')">
                     <i class="fas fa-history mr-3"></i> History
                 </div>
+
+                <!-- NEW FEATURES -->
+                <div class="mt-4 px-4 py-2 text-xs text-gray-500 font-semibold uppercase">New Features</div>
+
+                <div class="nav-item" onclick="showSection('nft')">
+                    <i class="fas fa-palette mr-3"></i> NFT Marketplace
+                </div>
+                <div class="nav-item" onclick="showSection('governance')">
+                    <i class="fas fa-gavel mr-3"></i> DAO Governance
+                </div>
+                <div class="nav-item" onclick="showSection('trading')">
+                    <i class="fas fa-chart-line mr-3"></i> Advanced Trading
+                </div>
+                <div class="nav-item" onclick="showSection('social')">
+                    <i class="fas fa-users mr-3"></i> Social Feed
+                </div>
+                <div class="nav-item" onclick="showSection('defi')">
+                    <i class="fas fa-coins mr-3"></i> DeFi Hub
+                </div>
+                <div class="nav-item" onclick="showSection('gaming')">
+                    <i class="fas fa-gamepad mr-3"></i> Gaming
+                </div>
             </nav>
         </div>
         <div class="absolute bottom-0 w-full p-6 border-t border-gray-800">
@@ -825,6 +847,267 @@
                 </button>
                 <div class="text-center text-sm text-gray-400">
                     New user? Wallet created automatically on first login
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NFT Marketplace Section -->
+    <div id="nft-section" class="section" style="display:none;">
+        <div class="p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gradient mb-2">NFT Marketplace</h2>
+                <p class="text-gray-400">Mint, buy, sell, and trade NFTs on STRAT</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-4 mb-6">
+                <button onclick="showNFTTab('marketplace')" class="btn-primary px-6 py-2 rounded-lg" id="nft-marketplace-tab">Marketplace</button>
+                <button onclick="showNFTTab('mint')" class="btn-secondary px-6 py-2 rounded-lg" id="nft-mint-tab">Mint NFT</button>
+                <button onclick="showNFTTab('collection')" class="btn-secondary px-6 py-2 rounded-lg" id="nft-collection-tab">My Collection</button>
+            </div>
+
+            <!-- Marketplace Tab -->
+            <div id="nft-marketplace" class="nft-tab">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="nft-grid">
+                    <div class="glass p-4 rounded-xl text-center text-gray-400">Loading NFTs...</div>
+                </div>
+            </div>
+
+            <!-- Mint Tab -->
+            <div id="nft-mint" class="nft-tab" style="display:none;">
+                <div class="max-w-2xl glass p-8 rounded-xl">
+                    <h3 class="text-2xl font-bold mb-6">Create New NFT</h3>
+                    <div class="space-y-4">
+                        <input type="text" id="nft-name" placeholder="NFT Name" class="w-full px-4 py-3 rounded-lg">
+                        <textarea id="nft-description" placeholder="Description" class="w-full px-4 py-3 rounded-lg" rows="4"></textarea>
+                        <input type="text" id="nft-image" placeholder="IPFS Image Hash (ipfs://...)" class="w-full px-4 py-3 rounded-lg">
+                        <input type="number" id="nft-royalty" placeholder="Royalty % (0-50)" class="w-full px-4 py-3 rounded-lg" min="0" max="50">
+                        <button onclick="mintNFT()" class="btn-primary w-full py-3 rounded-lg font-bold">Mint NFT</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collection Tab -->
+            <div id="nft-collection" class="nft-tab" style="display:none;">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="nft-collection-grid">
+                    <div class="glass p-4 rounded-xl text-center text-gray-400">You don't own any NFTs yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DAO Governance Section -->
+    <div id="governance-section" class="section" style="display:none;">
+        <div class="p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gradient mb-2">DAO Governance</h2>
+                <p class="text-gray-400">Participate in STRAT governance through proposals and voting</p>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-4 gap-6 mb-8">
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Total Proposals</div>
+                    <div class="text-3xl font-bold text-gradient" id="total-proposals">0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Active Proposals</div>
+                    <div class="text-3xl font-bold text-green-400" id="active-proposals">0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Your Voting Power</div>
+                    <div class="text-3xl font-bold text-purple-400" id="voting-power">0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Participation Rate</div>
+                    <div class="text-3xl font-bold text-blue-400" id="participation-rate">0%</div>
+                </div>
+            </div>
+
+            <!-- Create Proposal Button -->
+            <button onclick="showCreateProposal()" class="btn-primary px-6 py-3 rounded-lg mb-6">
+                <i class="fas fa-plus mr-2"></i> Create Proposal
+            </button>
+
+            <!-- Proposals List -->
+            <div id="proposals-list" class="space-y-4">
+                <div class="glass p-4 rounded-xl text-center text-gray-400">Loading proposals...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Trading Section -->
+    <div id="trading-section" class="section" style="display:none;">
+        <div class="p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gradient mb-2">Advanced Trading</h2>
+                <p class="text-gray-400">Limit orders, stop-loss, take-profit, and more</p>
+            </div>
+
+            <!-- Trading Stats -->
+            <div class="grid grid-cols-4 gap-6 mb-8">
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">24h Volume</div>
+                    <div class="text-2xl font-bold text-gradient" id="trading-volume">$0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Active Orders</div>
+                    <div class="text-2xl font-bold text-yellow-400" id="active-orders">0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Total Trades</div>
+                    <div class="text-2xl font-bold text-blue-400" id="total-trades">0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Portfolio Value</div>
+                    <div class="text-2xl font-bold text-green-400" id="portfolio-value">$0</div>
+                </div>
+            </div>
+
+            <!-- Order Form -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="glass p-8 rounded-xl">
+                    <h3 class="text-2xl font-bold mb-6">Create Order</h3>
+                    <div class="space-y-4">
+                        <select id="order-pair" class="w-full px-4 py-3 rounded-lg">
+                            <option>STRAT/USD</option>
+                            <option>STRAT/BTC</option>
+                            <option>STRAT/ETH</option>
+                        </select>
+                        <select id="order-side" class="w-full px-4 py-3 rounded-lg">
+                            <option value="buy">Buy</option>
+                            <option value="sell">Sell</option>
+                        </select>
+                        <select id="order-type" class="w-full px-4 py-3 rounded-lg">
+                            <option value="limit">Limit Order</option>
+                            <option value="market">Market Order</option>
+                            <option value="stop-loss">Stop-Loss</option>
+                            <option value="take-profit">Take-Profit</option>
+                        </select>
+                        <input type="number" id="order-amount" placeholder="Amount (STRAT)" class="w-full px-4 py-3 rounded-lg" step="0.01">
+                        <input type="number" id="order-price" placeholder="Price (USD)" class="w-full px-4 py-3 rounded-lg" step="0.0001">
+                        <button onclick="placeOrder()" class="btn-primary w-full py-3 rounded-lg font-bold">Place Order</button>
+                    </div>
+                </div>
+
+                <div class="glass p-8 rounded-xl">
+                    <h3 class="text-2xl font-bold mb-6">Order Book</h3>
+                    <div id="orderbook" class="space-y-2">
+                        <div class="text-gray-400 text-center">Loading order book...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Orders -->
+            <div class="mt-8">
+                <h3 class="text-2xl font-bold mb-6">Your Active Orders</h3>
+                <div id="user-orders" class="space-y-4">
+                    <div class="glass p-4 rounded-xl text-center text-gray-400">No active orders</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Social Feed Section -->
+    <div id="social-section" class="section" style="display:none;">
+        <div class="p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gradient mb-2">Social Feed</h2>
+                <p class="text-gray-400">Connect with the STRAT community</p>
+            </div>
+
+            <!-- Create Post -->
+            <div class="glass p-6 rounded-xl mb-8">
+                <textarea id="post-content" placeholder="What's on your mind?" class="w-full px-4 py-3 rounded-lg mb-4" rows="3"></textarea>
+                <button onclick="createPost()" class="btn-primary px-6 py-2 rounded-lg">
+                    <i class="fas fa-paper-plane mr-2"></i> Post
+                </button>
+            </div>
+
+            <!-- Feed -->
+            <div id="social-feed" class="space-y-6">
+                <div class="glass p-4 rounded-xl text-center text-gray-400">Loading feed...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DeFi Hub Section -->
+    <div id="defi-section" class="section" style="display:none;">
+        <div class="p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gradient mb-2">DeFi Hub</h2>
+                <p class="text-gray-400">Access all DeFi protocols in one place</p>
+            </div>
+
+            <!-- TVL Stats -->
+            <div class="grid grid-cols-3 gap-6 mb-8">
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Total Value Locked</div>
+                    <div class="text-3xl font-bold text-gradient" id="tvl">$0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">24h Volume</div>
+                    <div class="text-3xl font-bold text-green-400" id="defi-volume">$0</div>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <div class="text-sm text-gray-400 mb-2">Active Pools</div>
+                    <div class="text-3xl font-bold text-purple-400" id="active-pools">0</div>
+                </div>
+            </div>
+
+            <!-- DeFi Options -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass p-8 rounded-xl cursor-pointer hover:border-green-400" onclick="showSection('liquidity')">
+                    <i class="fas fa-water text-5xl text-blue-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2">Liquidity Pools</h3>
+                    <p class="text-gray-400">Provide liquidity and earn fees</p>
+                </div>
+                <div class="glass p-8 rounded-xl cursor-pointer hover:border-green-400">
+                    <i class="fas fa-seedling text-5xl text-green-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2">Yield Farming</h3>
+                    <p class="text-gray-400">Stake LP tokens and earn rewards</p>
+                </div>
+                <div class="glass p-8 rounded-xl cursor-pointer hover:border-green-400">
+                    <i class="fas fa-hand-holding-usd text-5xl text-yellow-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2">Lending</h3>
+                    <p class="text-gray-400">Lend your STRAT and earn interest</p>
+                </div>
+                <div class="glass p-8 rounded-xl cursor-pointer hover:border-green-400">
+                    <i class="fas fa-exchange-alt text-5xl text-purple-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2">Token Swap</h3>
+                    <p class="text-gray-400">Swap tokens instantly with AMM</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gaming Section -->
+    <div id="gaming-section" class="section" style="display:none;">
+        <div class="p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gradient mb-2">Gaming</h2>
+                <p class="text-gray-400">Play-to-earn games powered by STRAT</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass p-8 rounded-xl text-center">
+                    <i class="fas fa-dice text-6xl text-red-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">Dice Game</h3>
+                    <p class="text-gray-400 mb-4">Roll the dice and win STRAT</p>
+                    <button class="btn-primary px-6 py-2 rounded-lg">Play Now</button>
+                </div>
+                <div class="glass p-8 rounded-xl text-center">
+                    <i class="fas fa-chess text-6xl text-purple-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">Strategy Game</h3>
+                    <p class="text-gray-400 mb-4">Coming Soon</p>
+                    <button class="btn-secondary px-6 py-2 rounded-lg" disabled>Soon</button>
+                </div>
+                <div class="glass p-8 rounded-xl text-center">
+                    <i class="fas fa-trophy text-6xl text-yellow-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">Tournaments</h3>
+                    <p class="text-gray-400 mb-4">Compete for prizes</p>
+                    <button class="btn-primary px-6 py-2 rounded-lg">View Tournaments</button>
                 </div>
             </div>
         </div>
