@@ -723,10 +723,139 @@
             </div>
         </div>
 
+        <!-- NFT Marketplace Section -->
+        <div id="nft" class="section">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-3xl font-bold">NFT Marketplace</h2>
+                <button onclick="openMintNFT()" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i> Mint NFT
+                </button>
+            </div>
+
+            <!-- Marketplace Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Total NFTs</div>
+                    <div class="text-2xl font-bold" id="totalNFTs">0</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Floor Price</div>
+                    <div class="text-2xl font-bold text-purple-400" id="floorPrice">0 STRAT</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">24h Volume</div>
+                    <div class="text-2xl font-bold text-green-400" id="nftVolume">0 STRAT</div>
+                </div>
+                <div class="card">
+                    <div class="text-gray-400 text-sm mb-2">Your NFTs</div>
+                    <div class="text-2xl font-bold text-blue-400" id="myNFTs">0</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-6">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex-1 min-w-64">
+                        <input type="text" id="nftSearch" placeholder="Search NFTs..." class="w-full">
+                    </div>
+                    <select id="nftCategory" class="w-auto" onchange="filterNFTs()">
+                        <option value="all">All Categories</option>
+                        <option value="art">Art</option>
+                        <option value="collectibles">Collectibles</option>
+                        <option value="gaming">Gaming</option>
+                        <option value="utility">Utility</option>
+                    </select>
+                    <select id="nftSort" class="w-auto" onchange="filterNFTs()">
+                        <option value="recent">Recently Listed</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="popular">Most Popular</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- NFT Grid -->
+            <div id="nftGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- NFTs will be loaded here -->
+            </div>
+        </div>
+
         <!-- Wallet Section -->
         <div id="wallet" class="section">
             <h2 class="text-3xl font-bold mb-6">My Wallet</h2>
             <p class="text-gray-400">Wallet section coming soon...</p>
+        </div>
+    </div>
+
+    <!-- Mint NFT Modal -->
+    <div id="mintNFTModal" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">Mint New NFT</h2>
+                <button onclick="closeMintNFT()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form onsubmit="submitMintNFT(event)">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">NFT Name</label>
+                    <input type="text" id="nftName" required placeholder="Enter NFT name">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Description</label>
+                    <textarea id="nftDescription" rows="4" required placeholder="Describe your NFT"></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Category</label>
+                    <select id="nftMintCategory">
+                        <option value="art">Art</option>
+                        <option value="collectibles">Collectibles</option>
+                        <option value="gaming">Gaming</option>
+                        <option value="utility">Utility</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Image URL or Upload</label>
+                    <input type="text" id="nftImage" placeholder="https://..." class="mb-2">
+                    <input type="file" id="nftImageFile" accept="image/*" class="w-full">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Royalty %</label>
+                        <input type="number" id="nftRoyalty" value="5" min="0" max="20" step="0.1">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Initial Price (STRAT)</label>
+                        <input type="number" id="nftPrice" value="100" min="1" step="0.1">
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button type="submit" class="btn btn-primary flex-1">Mint NFT</button>
+                    <button type="button" onclick="closeMintNFT()" class="btn btn-secondary flex-1">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NFT Details Modal -->
+    <div id="nftDetailsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">NFT Details</h2>
+                <button onclick="closeNFTDetails()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div id="nftDetailsContent" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Content will be loaded dynamically -->
+            </div>
         </div>
     </div>
 
@@ -1452,6 +1581,330 @@
         // Load governance data when section is shown
         if (currentSection === 'governance') {
             loadGovernanceData();
+        }
+
+        // NFT Marketplace Functions
+        let nfts = [];
+        let selectedNFT = null;
+
+        async function loadNFTData() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/nft/marketplace', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    nfts = data.nfts || [];
+                    updateNFTStats(data.stats);
+                    renderNFTs();
+                }
+            } catch (error) {
+                console.error('Error loading NFT data:', error);
+                loadSampleNFTs();
+            }
+        }
+
+        function loadSampleNFTs() {
+            nfts = [
+                {
+                    id: 1,
+                    name: 'Cosmic Dragon #142',
+                    description: 'Rare cosmic dragon NFT with unique traits',
+                    category: 'art',
+                    price: 250,
+                    image: 'https://picsum.photos/400/400?random=1',
+                    creator: '0x1234...5678',
+                    owner: '0xabcd...efgh',
+                    rarity: 'legendary',
+                    likes: 234
+                },
+                {
+                    id: 2,
+                    name: 'Digital Landscape #89',
+                    description: 'Beautiful digital landscape artwork',
+                    category: 'art',
+                    price: 150,
+                    image: 'https://picsum.photos/400/400?random=2',
+                    creator: '0x9999...0000',
+                    owner: '0x8888...1111',
+                    rarity: 'rare',
+                    likes: 156
+                },
+                {
+                    id: 3,
+                    name: 'Game Sword #45',
+                    description: 'Legendary sword for in-game use',
+                    category: 'gaming',
+                    price: 500,
+                    image: 'https://picsum.photos/400/400?random=3',
+                    creator: '0x7777...2222',
+                    owner: '0x6666...3333',
+                    rarity: 'legendary',
+                    likes: 412
+                },
+                {
+                    id: 4,
+                    name: 'Access Pass #001',
+                    description: 'VIP access pass to exclusive events',
+                    category: 'utility',
+                    price: 1000,
+                    image: 'https://picsum.photos/400/400?random=4',
+                    creator: '0x5555...4444',
+                    owner: '0x4444...5555',
+                    rarity: 'legendary',
+                    likes: 891
+                },
+                {
+                    id: 5,
+                    name: 'Pixel Punk #2341',
+                    description: 'Classic pixel art collectible',
+                    category: 'collectibles',
+                    price: 75,
+                    image: 'https://picsum.photos/400/400?random=5',
+                    creator: '0x3333...6666',
+                    owner: '0x2222...7777',
+                    rarity: 'common',
+                    likes: 67
+                },
+                {
+                    id: 6,
+                    name: 'Abstract Flow #12',
+                    description: 'Modern abstract digital art',
+                    category: 'art',
+                    price: 200,
+                    image: 'https://picsum.photos/400/400?random=6',
+                    creator: '0x1111...8888',
+                    owner: '0x0000...9999',
+                    rarity: 'rare',
+                    likes: 189
+                }
+            ];
+            updateNFTStats({
+                totalNFTs: 1247,
+                floorPrice: 50,
+                volume: 12450,
+                myNFTs: 3
+            });
+            renderNFTs();
+        }
+
+        function updateNFTStats(stats) {
+            document.getElementById('totalNFTs').textContent = (stats.totalNFTs || 0).toLocaleString();
+            document.getElementById('floorPrice').textContent = (stats.floorPrice || 0) + ' STRAT';
+            document.getElementById('nftVolume').textContent = (stats.volume || 0).toLocaleString() + ' STRAT';
+            document.getElementById('myNFTs').textContent = stats.myNFTs || 0;
+        }
+
+        function renderNFTs() {
+            const grid = document.getElementById('nftGrid');
+            const category = document.getElementById('nftCategory')?.value || 'all';
+            const sort = document.getElementById('nftSort')?.value || 'recent';
+            const search = document.getElementById('nftSearch')?.value.toLowerCase() || '';
+
+            let filtered = nfts.filter(nft => {
+                const matchesCategory = category === 'all' || nft.category === category;
+                const matchesSearch = !search || nft.name.toLowerCase().includes(search) ||
+                                    nft.description.toLowerCase().includes(search);
+                return matchesCategory && matchesSearch;
+            });
+
+            // Sort
+            if (sort === 'price-low') {
+                filtered.sort((a, b) => a.price - b.price);
+            } else if (sort === 'price-high') {
+                filtered.sort((a, b) => b.price - a.price);
+            } else if (sort === 'popular') {
+                filtered.sort((a, b) => b.likes - a.likes);
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-12">No NFTs found</div>';
+                return;
+            }
+
+            grid.innerHTML = filtered.map(nft => {
+                let rarityColor = 'gray';
+                if (nft.rarity === 'legendary') rarityColor = 'yellow';
+                else if (nft.rarity === 'rare') rarityColor = 'purple';
+                else if (nft.rarity === 'uncommon') rarityColor = 'blue';
+
+                return `
+                    <div class="card cursor-pointer" onclick="showNFTDetails(${nft.id})">
+                        <div class="relative mb-4">
+                            <img src="${nft.image}" alt="${nft.name}" class="w-full h-64 object-cover rounded-lg">
+                            <div class="absolute top-2 right-2 px-2 py-1 bg-${rarityColor}-500 bg-opacity-80 rounded text-xs uppercase">
+                                ${nft.rarity}
+                            </div>
+                        </div>
+                        <h4 class="font-bold text-lg mb-2">${nft.name}</h4>
+                        <p class="text-sm text-gray-400 mb-3 line-clamp-2">${nft.description}</p>
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <div class="text-xs text-gray-400">Price</div>
+                                <div class="font-bold text-green-400">${nft.price} STRAT</div>
+                            </div>
+                            <div class="text-sm text-gray-400">
+                                <i class="fas fa-heart mr-1"></i> ${nft.likes}
+                            </div>
+                        </div>
+                        <button onclick="buyNFT(${nft.id}); event.stopPropagation();" class="btn btn-primary w-full text-sm py-2">
+                            Buy Now
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterNFTs() {
+            renderNFTs();
+        }
+
+        function showNFTDetails(nftId) {
+            selectedNFT = nfts.find(n => n.id === nftId);
+            if (!selectedNFT) return;
+
+            const content = document.getElementById('nftDetailsContent');
+            content.innerHTML = `
+                <div>
+                    <img src="${selectedNFT.image}" alt="${selectedNFT.name}" class="w-full rounded-lg">
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold mb-4">${selectedNFT.name}</h3>
+                    <p class="text-gray-400 mb-4">${selectedNFT.description}</p>
+
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center justify-between py-2 border-b border-gray-700">
+                            <span class="text-gray-400">Creator</span>
+                            <span class="font-mono">${selectedNFT.creator}</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-700">
+                            <span class="text-gray-400">Owner</span>
+                            <span class="font-mono">${selectedNFT.owner}</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-700">
+                            <span class="text-gray-400">Category</span>
+                            <span class="capitalize">${selectedNFT.category}</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-700">
+                            <span class="text-gray-400">Rarity</span>
+                            <span class="capitalize">${selectedNFT.rarity}</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-700">
+                            <span class="text-gray-400">Likes</span>
+                            <span>${selectedNFT.likes}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="text-sm text-gray-400 mb-2">Current Price</div>
+                        <div class="text-3xl font-bold text-green-400">${selectedNFT.price} STRAT</div>
+                    </div>
+
+                    <button onclick="buyNFT(${selectedNFT.id})" class="btn btn-primary w-full mb-3">
+                        <i class="fas fa-shopping-cart mr-2"></i> Buy Now
+                    </button>
+                    <button onclick="likeNFT(${selectedNFT.id})" class="btn btn-secondary w-full">
+                        <i class="fas fa-heart mr-2"></i> Like
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('nftDetailsModal').classList.add('active');
+        }
+
+        function closeNFTDetails() {
+            document.getElementById('nftDetailsModal').classList.remove('active');
+            selectedNFT = null;
+        }
+
+        async function buyNFT(nftId) {
+            const nft = nfts.find(n => n.id === nftId);
+            if (!nft) return;
+
+            if (!confirm(`Buy ${nft.name} for ${nft.price} STRAT?`)) return;
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/nft/buy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nftId: nftId })
+                });
+
+                if (response.ok) {
+                    showToast('NFT purchased successfully!', 'success');
+                    closeNFTDetails();
+                    loadNFTData();
+                } else {
+                    throw new Error('Purchase failed');
+                }
+            } catch (error) {
+                console.error('Error buying NFT:', error);
+                showToast('Error purchasing NFT. Please try again.', 'error');
+            }
+        }
+
+        function likeNFT(nftId) {
+            const nft = nfts.find(n => n.id === nftId);
+            if (nft) {
+                nft.likes++;
+                showToast('NFT liked!', 'success');
+                showNFTDetails(nftId);
+            }
+        }
+
+        function openMintNFT() {
+            document.getElementById('mintNFTModal').classList.add('active');
+        }
+
+        function closeMintNFT() {
+            document.getElementById('mintNFTModal').classList.remove('active');
+        }
+
+        async function submitMintNFT(event) {
+            event.preventDefault();
+
+            const nftData = {
+                name: document.getElementById('nftName').value,
+                description: document.getElementById('nftDescription').value,
+                category: document.getElementById('nftMintCategory').value,
+                image: document.getElementById('nftImage').value,
+                royalty: document.getElementById('nftRoyalty').value,
+                price: document.getElementById('nftPrice').value
+            };
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/nft/mint', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(nftData)
+                });
+
+                if (response.ok) {
+                    showToast('NFT minted successfully!', 'success');
+                    closeMintNFT();
+                    loadNFTData();
+                } else {
+                    throw new Error('Minting failed');
+                }
+            } catch (error) {
+                console.error('Error minting NFT:', error);
+                showToast('Error minting NFT. Please try again.', 'error');
+            }
+        }
+
+        // Load NFT data when section is shown
+        if (currentSection === 'nft') {
+            loadNFTData();
         }
     </script>
 </body>
