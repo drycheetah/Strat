@@ -853,7 +853,7 @@
     </div>
 
     <!-- NFT Marketplace Section -->
-    <div id="nft-section" class="section" style="display:none;">
+    <div id="section-nft" class="hidden">
         <div class="p-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-bold text-gradient mb-2">NFT Marketplace</h2>
@@ -898,7 +898,7 @@
     </div>
 
     <!-- DAO Governance Section -->
-    <div id="governance-section" class="section" style="display:none;">
+    <div id="section-governance" class="hidden">
         <div class="p-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-bold text-gradient mb-2">DAO Governance</h2>
@@ -938,7 +938,7 @@
     </div>
 
     <!-- Advanced Trading Section -->
-    <div id="trading-section" class="section" style="display:none;">
+    <div id="section-trading" class="hidden">
         <div class="p-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-bold text-gradient mb-2">Advanced Trading</h2>
@@ -1010,7 +1010,7 @@
     </div>
 
     <!-- Social Feed Section -->
-    <div id="social-section" class="section" style="display:none;">
+    <div id="section-social" class="hidden">
         <div class="p-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-bold text-gradient mb-2">Social Feed</h2>
@@ -1033,7 +1033,7 @@
     </div>
 
     <!-- DeFi Hub Section -->
-    <div id="defi-section" class="section" style="display:none;">
+    <div id="section-defi" class="hidden">
         <div class="p-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-bold text-gradient mb-2">DeFi Hub</h2>
@@ -1083,7 +1083,7 @@
     </div>
 
     <!-- Gaming Section -->
-    <div id="gaming-section" class="section" style="display:none;">
+    <div id="section-gaming" class="hidden">
         <div class="p-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-bold text-gradient mb-2">Gaming</h2>
@@ -1457,9 +1457,15 @@
 
         function showSection(name) {
             document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.add('hidden'));
-            document.getElementById('section-' + name).classList.remove('hidden');
+            const section = document.getElementById('section-' + name);
+            if (section) {
+                section.classList.remove('hidden');
+            }
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.target.closest('.nav-item').classList.add('active');
+            if (event && event.target) {
+                const navItem = event.target.closest('.nav-item');
+                if (navItem) navItem.classList.add('active');
+            }
 
             // Load section-specific data
             if (name === 'mine') {
@@ -1477,6 +1483,22 @@
                 loadLeaderboards();
             } else if (name === 'history') {
                 loadHistory();
+            } else if (name === 'liquidity') {
+                loadPoolInfo();
+                loadUserPosition();
+            } else if (name === 'staking') {
+                loadStakingInfo();
+                loadUserStakes();
+            } else if (name === 'mempool') {
+                loadMempoolInfo();
+            } else if (name === 'nft') {
+                showNFTTab('marketplace');
+            } else if (name === 'governance') {
+                loadGovernance();
+            } else if (name === 'trading') {
+                loadTrading();
+            } else if (name === 'social') {
+                loadSocialFeed();
             }
         }
 
@@ -1801,23 +1823,6 @@
             }
         }
 
-        // Load pool info when switching to liquidity section
-        const originalShowSection = showSection;
-        showSection = function(name) {
-            originalShowSection(name);
-            if (name === 'liquidity') {
-                loadPoolInfo();
-                loadUserPosition();
-            } else if (name === 'nft') {
-                showNFTTab('marketplace');
-            } else if (name === 'governance') {
-                loadGovernance();
-            } else if (name === 'trading') {
-                loadTrading();
-            } else if (name === 'social') {
-                loadSocialFeed();
-            }
-        };
 
         // Staking functions
         let stakingInfo = null;
@@ -2070,26 +2075,6 @@
             }
         }
 
-        // Update showSection to load data
-        const _originalShowSection = showSection;
-        showSection = function(name) {
-            _originalShowSection(name);
-
-            if (name === 'staking') {
-                loadStakingInfo();
-                loadUserStakes();
-            } else if (name === 'mempool') {
-                loadMempoolInfo();
-            } else if (name === 'analytics') {
-                loadAnalytics();
-            } else if (name === 'portfolio') {
-                loadPortfolio();
-            } else if (name === 'leaderboard') {
-                loadLeaderboards();
-            } else if (name === 'history') {
-                loadHistory();
-            }
-        };
 
         // Analytics Functions
         let charts = {};
