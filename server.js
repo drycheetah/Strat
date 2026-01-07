@@ -25,6 +25,8 @@ const explorerRoutes = require('./routes/explorer.routes');
 const stakingRoutes = require('./routes/staking.routes');
 const socialRoutes = require('./routes/social.routes');
 const nftRoutes = require('./routes/nft.routes');
+const gamingRoutes = require('./routes/gaming.routes');
+const metaverseRoutes = require('./routes/metaverse.routes');
 const governanceRoutes = require('./routes/governance.routes');
 const tradingRoutes = require('./routes/trading.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
@@ -257,6 +259,8 @@ class ProductionServer {
     this.app.use('/api/staking', stakingRoutes);
     this.app.use('/api/social', socialRoutes);
     this.app.use('/api/nft', nftRoutes);
+    this.app.use('/api/gaming', gamingRoutes);
+    this.app.use('/api/metaverse', metaverseRoutes);
     this.app.use('/api/governance', governanceRoutes);
     this.app.use('/api/trading', tradingRoutes);
     this.app.use('/api/price', require('./routes/price.routes'));
